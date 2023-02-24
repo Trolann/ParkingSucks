@@ -7,7 +7,7 @@ class Config:
         self.conn = mysql.connector.connect(
             host=getenv("DB_HOST"),
             user=getenv("DB_USER"),
-            #=getenv("DB_PASS"),
+            password=getenv("DB_PASS"),
             database=getenv("DB_NAME"),
             port=getenv("DB_PORT"),
         )

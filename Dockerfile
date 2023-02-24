@@ -1,14 +1,15 @@
-FROM python:3.11-alpine
+FROM python:3.11-bullseye
 
-RUN apk update && apk add --no-cache \
-    build-base \
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y \
+    build-essential \
     libffi-dev \
-    openssl-dev
+    libssl-dev
 
 WORKDIR /app
 
 COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install certifi
 
 CMD [ "python", "garage_scrapy.py" ]

@@ -2,23 +2,17 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from urllib3 import PoolManager
-from certifi import where as certifi_where
+import certifi
 from ssl import create_default_context as create_ssl_context
 from agent_picker import random_ua
 from garage import Garage
 from mariadb import Config
-
-garage_db = Config('test')
+from time import sleep
 
 def get_site(site_url):
-    http = PoolManager(
-        cert_reqs='CERT_REQUIRED',
-        ca_certs=certifi_where(),
-        ssl_context=create_ssl_context(),
-        headers={'User-Agent': random_ua()[0], "Accept-Language": "en-US, en;q=0.5"}
-    )
-    page = http.request('GET', site_url)
-    return str(page._body)
+    headers = {'User-Agent': random_ua()[0], "Accept-Language": "en-US, en;q=0.5"}
+    page = requests.get(site_url, headers=headers, verify=False)
+    return page.content.decode('utf-8')
 
 
 def get_garage_info(garage_url):
@@ -49,5 +43,9 @@ def get_garage_info(garage_url):
 
 if __name__ == '__main__':
     url = "https://sjsuparkingstatus.sjsu.edu/"
+    garage_db = Config('sjsu')
     for garage in get_garage_info(url):
+        print(garage.name)
+        print(certifi.where())
         garage_db.new(garage)
+    sleep(60 * 5)
