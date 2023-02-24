@@ -1,0 +1,4 @@
+*.env
+/venv/*
+get_new_agents.py
+/.idea/*

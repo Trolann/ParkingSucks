@@ -1,18 +1,14 @@
-FROM python:3.9-alpine
+FROM python:3.11-alpine
 
-ENV DIR_PATH='/parking/'
+RUN apk update && apk add --no-cache \
+    build-base \
+    libffi-dev \
+    openssl-dev
 
-RUN mkdir -p /parking
-RUN mkdir -p /parking/db
-RUN pip install certifi
-RUN pip install attrs
-RUN pip install aiohttp
-RUN pip install cffi
-RUN pip install urllib3
-RUN pip install pycparser
-RUN pip install requests
+WORKDIR /app
 
-COPY main.py /parking
-COPY db.db /parking
+COPY . /app
 
-CMD ["python3", "/parking/main.py"]
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD [ "python", "garage_scrapy.py" ]
