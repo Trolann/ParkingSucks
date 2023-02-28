@@ -9,6 +9,7 @@ from garage import Garage
 from mariadb import Config
 from time import sleep
 
+
 def get_site(site_url):
     headers = {'User-Agent': random_ua()[0], "Accept-Language": "en-US, en;q=0.5"}
     page = requests.get(site_url, headers=headers, verify=False)
@@ -35,7 +36,7 @@ def get_garage_info(garage_url):
         address_elem = garage_elem.find_next('a', class_='garage__address')
         address = address_elem['href'].split('place/')[1]
         fullness_elem = address_elem.find_next('span', class_='garage__fullness')
-        fullness = int("".join(x for x in fullness_elem.text if x in '0123456789'))
+        fullness = int("".join(x for x in fullness_elem.text if x in '0123456789')) if 'Full' not in fullness_elem.text else 100
         garages.append(Garage(name, address, fullness, timestamp))
 
     return garages
