@@ -1,10 +1,10 @@
 import unittest
+import requests
 from datetime import datetime, timedelta
 from garage_scrapy import get_garage_info, Garage
 
 
 class TestGetGarageInfo(unittest.TestCase):
-
     def test_garage_names(self):
         garage_url = "https://sjsuparkingstatus.sjsu.edu/"
         garage_url = garage_url  # Replace with the actual URL
@@ -40,6 +40,19 @@ class TestGetGarageInfo(unittest.TestCase):
             self.assertGreaterEqual(garage.timestamp, six_hours_ago)
             self.assertLessEqual(garage.timestamp, now)
 
+class TestURLStatusCodes(unittest.TestCase):
+
+    def test_url_status_codes(self):
+        urls = [
+            "https://www.parkingsucks.com",
+            "http://www.parkingsucks.com",
+            "https://parkingsucks.com",
+            "http://parkingsucks.com",
+        ]
+
+        for url in urls:
+            response = requests.get(url)
+            self.assertEqual(response.status_code, 200, f"URL: {url} returned a non-200 status code")
 
 if __name__ == "__main__":
     unittest.main()
