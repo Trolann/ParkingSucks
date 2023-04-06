@@ -1,16 +1,18 @@
 import mysql.connector
+from sshtunnel import SSHTunnelForwarder
 from os import getenv
 from garage import Garage
 
 class Config:
     def __init__(self, table_name):
+            # Try to connect to the MySQL server without an SSH tunnel
         self.conn = mysql.connector.connect(
             host=getenv("DB_HOST"),
             user=getenv("DB_USER"),
             password=getenv("DB_PASS"),
             database=getenv("DB_NAME"),
-            port=getenv("DB_PORT"),
-        )
+            port=getenv("DB_PORT")
+            )
         self.table = table_name
         self.create_table()
         self.latest = self.load_latest()

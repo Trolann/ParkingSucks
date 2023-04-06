@@ -1,9 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-from urllib3 import PoolManager
-import certifi
-from ssl import create_default_context as create_ssl_context
 from agent_picker import random_ua
 from garage import Garage
 from mariadb import Config
@@ -32,7 +29,7 @@ def get_garage_info(garage_url):
     garages = []
     garage_elems = soup.find_all('h2', class_='garage__name')
     for garage_elem in garage_elems:
-        name = garage_elem.text
+        name = garage_elem.text.rstrip()
         address_elem = garage_elem.find_next('a', class_='garage__address')
         address = address_elem['href'].split('place/')[1]
         fullness_elem = address_elem.find_next('span', class_='garage__fullness')
@@ -46,7 +43,6 @@ if __name__ == '__main__':
     url = "https://sjsuparkingstatus.sjsu.edu/"
     garage_db = Config('sjsu')
     for garage in get_garage_info(url):
-        print(garage.name)
-        print(certifi.where())
+        print(f'New garage: {garage}')
         garage_db.new(garage)
     sleep(60 * 5)
