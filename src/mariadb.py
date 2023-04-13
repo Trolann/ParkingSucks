@@ -1,7 +1,6 @@
 import mysql.connector
-from sshtunnel import SSHTunnelForwarder
 from os import getenv
-from garage import Garage
+from src.scraper.garage import Garage
 
 class Config:
     def __init__(self, table_name):

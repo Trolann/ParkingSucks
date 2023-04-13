@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from agent_picker import random_ua
 from garage import Garage
-from mariadb import Config
+from src.mariadb import Config
 from time import sleep
 
 

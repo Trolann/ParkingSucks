@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
 
 WORKDIR /app
 
-COPY . /app
+COPY ../.. /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install certifi

@@ -1,0 +1,61 @@
+####### DOCKER COMPOSE INFRASTRUCTURE #######
+version: "3.7"
+
+####### NETWORKS
+networks:
+  db_nginx:
+    name: db_nginx
+  jenkins_nginx:
+    name: jenkins_nginx
+  portainer_nginx:
+    name: portainer_nginx
+
+####### VOLUMES
+volumes:
+  jenkins_home:
+
+####### SERVICES
+services:
+  jenkins:
+    image: jenkins/jenkins
+    container_name: jenkins
+    restart: unless-stopped
+    volumes:
+      - jenkins_home:/var/jenkins_home
+#      - ~/infra/jenkins_conf:/var/jenkins_conf
+    networks:
+      - jenkins_nginx
+  nginx:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ~/infra/nginx:/etc/nginx/conf.d/
+      - /etc/letsencrypt/live:/etc/nginx/certs:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - /etc/letsencrypt/live/parkingsucks.com/fullchain.pem:/etc/letsencrypt/live/parkingsucks.com/fullchain.pem
+      - /etc/letsencrypt/live/parkingsucks.com/privkey.pem:/etc/letsencrypt/live/parkingsucks.com/privkey.pem
+    environment:
+      - DEFAULT_HOST=parkingsucks.com
+    networks:
+      - db_nginx
+      - jenkins_nginx
+      - portainer_nginx
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    networks:
+      - portainer_nginx
+    environment:
+      - VIRTUAL_HOST=portainer.parkingsucks.com
+      - VIRTUAL_PORT=9443
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ~/infra/portainer:/data
+    security_opt:
+      - no-new-privileges:true

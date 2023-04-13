@@ -1,0 +1,38 @@
+####### DOCKER COMPOSE INFRASTRUCTURE #######
+version: "3.7"
+
+####### NETWORKS
+networks:
+  db_net:
+    name: db_net
+  db_nginx:
+    name: db_nginx
+  jenkins_nginx:
+    name: jenkins_nginx
+  portainer_nginx:
+    name: portainer_nginx
+
+####### SERVICES
+services:
+  db:
+    container_name: dev-mariadb-parkingdata
+    env_file: dev-mariadb.env
+    restart: unless-stopped
+    volumes:
+      - '~/mariadb:/var/lib/mysql'
+    networks:
+      - db_net
+    image: 'docker.io/library/mariadb:10.10'
+    ports:
+      - '3306:3306'
+  mariadb_pma:
+    container_name: dev-mariadb-pma
+    image: phpmyadmin
+    restart: unless-stopped
+    networks:
+      - db_net
+      - db_nginx
+    ports:
+      - 8080:80
+    environment:
+      - PMA_HOST=dev-mariadb-parkingdata:3306
