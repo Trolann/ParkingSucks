@@ -14,7 +14,10 @@ from dotenv import load_dotenv
 load_dotenv('completion_manager.env')
 
 logger = BotLog('completion-manager')
-chat = ChatOpenAI(openai_api_key=getenv('OPENAI_API_KEY'))
+chat = ChatOpenAI(
+    openai_api_key=getenv('OPENAI_API_KEY'),
+    temperature=0.7
+    )
 
 def complete_moderation_chain(query: str) -> bool:
     try:

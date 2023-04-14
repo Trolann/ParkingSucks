@@ -1,5 +1,8 @@
-The user would like to know {message}.
-
 Here's the SQL query results: {results}
+
+Do not mention these SQL results directly, you can refer to them as if you're recalling them from memory. Things like "My SQL database" should be avoided.
+Instead you should say something like "It looks like", "I think", or "Based on what I can tell".
+
+The user would like to know {message}.
 
 What is the final answer? If you don't have enough information say something like "I'm sorry, I can't help with that. Maybe try asking a different way."

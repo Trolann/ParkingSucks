@@ -4,33 +4,15 @@ Make sure to use current date functions from SQL to query and return the 'name' 
 
 Example Question: "What is the average parking fullness for my class which starts at 9:30am?"
 Example SQL Query:
-
 SELECT CONCAT(MIN(fullness), '% to ', MAX(fullness), '%') AS expected_fullness_range
 FROM sjsu
 WHERE
     TIME(time) BETWEEN TIME(DATE_ADD('09:30:00', INTERVAL -90 MINUTE)) AND TIME(DATE_ADD('09:30:00', INTERVAL -30 MINUTE))
+This is a good because it returns
 
-Example Question: "Is it likely the fullness around my class at 9:30am will be within ~5 points of the average?
-Example SQL Query:
-SELECT
-    CONCAT(
-        ROUND(AVG(fullness) - 2 * STDDEV(fullness), 2),
-        '% to ',
-        ROUND(AVG(fullness) + 2 * STDDEV(fullness), 2),
-        '%'
-    ) AS expected_fullness_range,
-    CASE
-        WHEN
-            AVG(fullness) - 2 * STDDEV(fullness) <= expected_fullness_range AND
-            AVG(fullness) + 2 * STDDEV(fullness) >= expected_fullness_range
-        THEN
-            'Likely within expected range'
-        ELSE
-            'Not likely within expected range'
-    END AS likelihood
-FROM sjsu
-WHERE
-    TIME(time) BETWEEN TIME(DATE_ADD('09:30:00', INTERVAL -90 MINUTE)) AND TIME(DATE_ADD('09:30:00', INTERVAL -30 MINUTE))
+Here's a bad example:
+SELECT fullness AS percent_full FROM sjsu WHERE DAYOFWEEK(time) = 2 AND TIME(time) BETWEEN '09:00:00' AND '09:30:00'
+This is bad because it doesn't return the 'name' column, so later LLMs can't tell the user information about the 4 garages.
 
 Here's my question:
 {question}

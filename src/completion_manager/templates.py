@@ -20,7 +20,7 @@ def get_safety_prompt(query):
 
     return is_this_ok_chat_prompt.format_prompt(query=query)
 
-def get_sql_gen_prompt():
+def get_sql_gen_prompt(message):
     with open('templates/sql_system.txt', 'r') as f:
         sql_gen_template = f.read()
 
@@ -31,7 +31,7 @@ def get_sql_gen_prompt():
     sql_gen_human_prompt = HumanMessagePromptTemplate.from_template(sql_gen_human)
     sql_gen_chat_prompt = ChatPromptTemplate.from_messages([sql_gen_system_prompt, sql_gen_human_prompt])
 
-    return sql_gen_chat_prompt
+    return sql_gen_chat_prompt.format_prompt(question=message)
 
 def get_final_answer_prompt(message, results):
     with open('templates/final_system.txt', 'r') as f:
