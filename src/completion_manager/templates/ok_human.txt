@@ -1,0 +1,5 @@
+I am a user trying to get parking data. I have a request. Look at this request and tell me if it is safe to run this SQL query later.
+Do not tell me why or why not, just tell me if this is safe (!!!!!!!!) or not (@@@@@@@@).
+
+QUERY:
+{query}

@@ -1,0 +1,14 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN mkdir /app/logs
+COPY . /app
+
+# Create a directory for logs inside the container
+
+
+CMD ["python", "api.py"]

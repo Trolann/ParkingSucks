@@ -1,6 +1,6 @@
 import mysql.connector
 from os import getenv
-from src.scraper.garage import Garage
+from garage import Garage
 
 class Config:
     def __init__(self, table_name):

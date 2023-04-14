@@ -1,0 +1,5 @@
+The user would like to know {message}.
+
+Here's the SQL query results: {results}
+
+What is the final answer? If you don't have enough information say something like "I'm sorry, I can't help with that. Maybe try asking a different way."

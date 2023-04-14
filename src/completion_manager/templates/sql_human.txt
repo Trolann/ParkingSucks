@@ -1,0 +1,40 @@
+I have a question about parking. I'll give you my question below and I need you to give me just the SQL query to get the results. You should return no markdown or other words, just the select and associated SQL commands
+
+Make sure to use current date functions from SQL to query and return the 'name' columns with the results.
+
+Example Question: "What is the average parking fullness for my class which starts at 9:30am?"
+Example SQL Query:
+
+SELECT CONCAT(MIN(fullness), '% to ', MAX(fullness), '%') AS expected_fullness_range
+FROM sjsu
+WHERE
+    TIME(time) BETWEEN TIME(DATE_ADD('09:30:00', INTERVAL -90 MINUTE)) AND TIME(DATE_ADD('09:30:00', INTERVAL -30 MINUTE))
+
+Example Question: "Is it likely the fullness around my class at 9:30am will be within ~5 points of the average?
+Example SQL Query:
+SELECT
+    CONCAT(
+        ROUND(AVG(fullness) - 2 * STDDEV(fullness), 2),
+        '% to ',
+        ROUND(AVG(fullness) + 2 * STDDEV(fullness), 2),
+        '%'
+    ) AS expected_fullness_range,
+    CASE
+        WHEN
+            AVG(fullness) - 2 * STDDEV(fullness) <= expected_fullness_range AND
+            AVG(fullness) + 2 * STDDEV(fullness) >= expected_fullness_range
+        THEN
+            'Likely within expected range'
+        ELSE
+            'Not likely within expected range'
+    END AS likelihood
+FROM sjsu
+WHERE
+    TIME(time) BETWEEN TIME(DATE_ADD('09:30:00', INTERVAL -90 MINUTE)) AND TIME(DATE_ADD('09:30:00', INTERVAL -30 MINUTE))
+
+Here's my question:
+{question}
+
+DO NOT REPLY WITH NOTES OR EXPLANATIONS. JUST A SQL QUERY TO RUN.
+
+The SQL query and only the SQL query to answer this question is...
