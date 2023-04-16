@@ -11,6 +11,12 @@ class Garage:
     fullness: int
     timestamp: str
 
+    def __str__(self):
+        return f"Garage: {self.name}, " \
+               f"Address: {self.address}, " \
+               f"Fullness: {self.fullness}, " \
+               f"Timestamp: {self.timestamp}"
+
     def get_tuple(self):
         """
         This method returns a tuple of the garage's name, address, fullness, and timestamp.

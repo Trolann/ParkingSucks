@@ -85,12 +85,12 @@ class Config:
             g = Garage(name, address, fullness, timestamp)
             return_list.append(g)
         if return_list:
-            logger.info(f"Loaded latest data from {self.table}")
+            logger.debug(f"Loaded latest data from {self.table}")
         else:
             logger.error(f"Failed to load latest data from {self.table}")
         return return_list
 
-    def new(self, g: Garage) -> None:
+    def new(self, g: Garage) -> bool:
         """
         This method adds a new Garage object to the MySQL server if it meets certain criteria.
         :param g: (Garage) The Garage object to be added to the MySQL server.
@@ -111,8 +111,10 @@ class Config:
                 self.conn.commit()
                 logger.debug(f'Added new data to {self.table}')
                 self.config = self.load_latest()
+                return True
             except Exception as err:
                 logger.error(f"Failed to add new data to {self.table}: {err}")
+                return False
 
 
     def __del__(self) -> None:
