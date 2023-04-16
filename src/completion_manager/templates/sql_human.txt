@@ -10,7 +10,6 @@ Here's a bad example:
 SELECT fullness AS percent_full FROM sjsu WHERE DAYOFWEEK(time) = 2 AND TIME(time) BETWEEN '09:00:00' AND '09:30:00'
 This is bad because it doesn't return the 'name' column, so later LLMs can't tell the user information about the 4 garages. It also has no limit on the rows returned; your version should have as few rows as possible.
 
-
 Here's a good example:
 SELECT 
   CONCAT('GarageName: ', name, ', Min: ', MIN(fullness), '%, Mean: ', ROUND(AVG(fullness), 2), '%, Max: ', MAX(fullness), '%, STDEV: ', ROUND(STD(fullness), 2), '%') AS parking_info 
@@ -21,15 +20,27 @@ WHERE
 GROUP BY 
   name;
 This is a good because it returns all of the possible information needed to answer the question about each garage in an easy to read format, without a lot of filler, like this:
+Data for Tuesday's at 9am.
 GarageName: North Garage , Min: 58%, Mean: 58.00%, Max: 58%, STDEV: 0.00%
 GarageName: South Campus Garage , Min: 5%, Mean: 5.00%, Max: 5%, STDEV: 0.00%
 GarageName: South Garage , Min: 83%, Mean: 84.00%, Max: 85%, STDEV: 1.00%
 GarageName: West Garage , Min: 61%, Mean: 61.50%, Max: 62%, STDEV: 0.50%
 
+Your task:
+ - Use chain of thought reasoning to write out the steps needed to solve this problem
+ - Write out what information you need about each garage
+ - Write out what time period you need to request information about
+   - If the user is asking about the future, retrieve historical information for the same time period. For example if the ask about the parking tomorrow, look for information from 6 days ago and earlier for that day. Never use WHERE time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 1 HOUR) or similar; you can't get data from the future.
+   - You should use at least +/- 15 minutes from what the user says. For example if they say between 10am-11am, your query should be between 945am and 1115am. 
+   - CONCAT the time-period into the header show
+ - Write out a sample output with a title row, header row and 1 sample
 
-Here's my question:
+Then, when you're ready to generate the SQL query, display it like this with no markdown and with no text after the SQL query:
+
+!!!!!!!!
+SELECT * FROM...
+
+Here's my question
 {question}
 
-DO NOT REPLY WITH NOTES OR EXPLANATIONS. JUST A SQL QUERY TO RUN.
-
-The SQL query and only the SQL query to answer this question is...
+Start your task.
