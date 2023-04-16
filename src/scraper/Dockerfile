@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
     libssl-dev
 
 WORKDIR /app
+RUN mkdir -p /all/logs
 
 COPY . /app
 
