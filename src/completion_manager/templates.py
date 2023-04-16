@@ -1,13 +1,15 @@
 from langchain.prompts import (
     ChatPromptTemplate,
-    PromptTemplate,
     SystemMessagePromptTemplate,
-    AIMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
-from datetime import datetime
 
 def get_safety_prompt(query):
+    '''
+    Loads prompt template from file to allow for rapid changing of prompts.
+    :param query:
+    :return:
+    '''
     with open('templates/ok_system.txt', 'r') as f:
         is_this_ok_template = f.read()
 
@@ -21,6 +23,11 @@ def get_safety_prompt(query):
     return is_this_ok_chat_prompt.format_prompt(query=query)
 
 def get_sql_gen_prompt(message):
+    '''
+    Loads prompt template from file to allow for rapid changing of prompts.
+    :param query:
+    :return:
+    '''
     with open('templates/sql_system.txt', 'r') as f:
         sql_gen_template = f.read()
 
@@ -34,6 +41,11 @@ def get_sql_gen_prompt(message):
     return sql_gen_chat_prompt.format_prompt(question=message)
 
 def get_final_answer_prompt(message, results):
+    '''
+    Loads prompt template from file to allow for rapid changing of prompts.
+    :param query:
+    :return:
+    '''
     with open('templates/final_system.txt', 'r') as f:
         final_answer_template = f.read()
 

@@ -1,6 +1,5 @@
 import discord
 import aiohttp
-import json
 from os import getenv
 from discord_log import BotLog
 from discord.ext import commands
@@ -18,6 +17,12 @@ intents.members = True
 bot = commands.Bot(command_prefix='$', intents=intents)
 
 async def call_completion_api(username, message):
+    '''
+    Call the completion API to get the messages
+    :param username:
+    :param message:
+    :return:
+    '''
     async with aiohttp.ClientSession() as session:
         url = getenv("COMPLETION_API_URL") + '/completion'
         api_key = getenv("COMPLETION_API_KEY")

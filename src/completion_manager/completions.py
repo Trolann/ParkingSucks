@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify, make_response
 import requests
 import json
 import os
+from re import sub
 
 app = Flask(__name__)
 
@@ -18,8 +19,18 @@ chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),
     temperature=0.7
     )
+chat4 = ChatOpenAI(
+    openai_api_key=getenv('OPENAI_API_KEY'),
+    temperature=0.7,
+    )
+chat4.model_name = "gpt-4"
 
 def complete_moderation_chain(query: str) -> bool:
+    '''
+    This is required by OpenAI to use their model in any production capacity. It's free.
+    :param query:
+    :return:
+    '''
     try:
         moderation_chain = OpenAIModerationChain(error=True)
         moderation_chain.run(query)
@@ -31,33 +42,65 @@ def complete_moderation_chain(query: str) -> bool:
         return False
 
 def is_this_ok(query) -> bool:
+    '''
+    Have the LLM determine if the query is associated with parking, classes or similar.
+    Specifically reject anything which is asking to do harm or alter the table.
+    Templates: ok_system.txt and ok_human.txt
+    :param query:
+    :return:
+    '''
     response = chat(query.to_messages()).content
     archive_completion(query.to_messages(), response)
     logger.info(f'Got response: {response} (query: {query})')
-    if '@@@@@@@@' in response:
-        logger.critical(f"UNSAFE QUERY DETECTED: {query}")
-        return False
     if '!!!!!!!!' in response:
         logger.info(f'Found a safe query')
         return True
+    # The nuance here is important for logging/debugging, but either way we're not doing it
+    if '@@@@@@@@' in response:
+        logger.critical(f"UNSAFE QUERY DETECTED: {query}")
     else:
         logger.error(f'Unable to determine safety of query: {query}')
-        return False
+    return False
 
 def valide_sql_query(sql_query):
-    malicious_keywords = ['DROP', 'ALTER', 'CREATE', 'UPDATE', 'DELETE', 'INSERT', 'GRANT', 'REVOKE']
+    '''
+    Simple string check to ensure no malicious commands are being executed.
+    :param sql_query:
+    :return:
+    '''
+    malicious_keywords = ['DROP', 'ALTER', 'CREATE', 'UPDATE',
+                          'DELETE', 'INSERT', 'GRANT', 'REVOKE',
+                          'TRUNCATE', 'RENAME', 'EXEC', 'MERGE',
+                          'SAVEPOINT', 'ROLLBACK', 'COMMIT']
     for keyword in malicious_keywords:
         if keyword.lower() in sql_query.lower():
             logger.error(f"Malicious keyword '{keyword}' found in SQL query: {sql_query}")
             return False
     return True
 
-def get_sql_query(question) -> str:
+def get_sql_query(question, gpt4=False) -> str:
+    '''
+    Sends requests to the model to get a runnable SQL query. Takes the response and finds the query
+    and extracts it, checks its validity and returns it.
+    :param question:
+    :param gpt4:
+    :return:
+    '''
     query = None
     logger.info(f'Getting SQL query for question: {question}')
+
+    # Get the messages to send to the model
     question = get_sql_gen_prompt(question)
-    response = chat(question.to_messages()).content
+
+    # Choose the model, gpt4 is slow af, but never misses
+    if not gpt4:
+        response = chat(question.to_messages()).content
+    else:
+        response = chat4(question.to_messages()).content
+
     logger.info(f'Got response: \n{response}\n')
+
+    # We likely always need to extract the query
     if not response.startswith('SELECT'):
         query_start = response.find("!!!!!!!!")
         if query_start == -1:
@@ -65,13 +108,22 @@ def get_sql_query(question) -> str:
             return ''
         query_start += len("!!!!!!!!")
         query_end = len(response)
+
+        # First pull out the query part
         query = response[query_start:query_end]
+
+        # Remove any markdown
+        query = sub(r'```[a-zA-Z]*', '```', query)
+
+        # Reduce tokens
         return_val = query.replace("\n", " ")
         logger.info(f'Extracted query: \n{return_val}\n')
     else:
         return_val = response
 
     archive_completion(question.to_messages(), response)
+
+    # Basic text string checks
     if not valide_sql_query(return_val):
         logger.error(f'Invalid SQL query: {return_val}')
         return ''
@@ -79,14 +131,35 @@ def get_sql_query(question) -> str:
 
 
 def get_final_answer(question, parking_info) -> str:
+    '''
+    Takes given parking information and generates the final user answer. This is also the final safety check.
+    :param question:
+    :param parking_info:
+    :return:
+    '''
     logger.info(f'Getting final answer for question: {question}')
     question = get_final_answer_prompt(question, parking_info)
-    response = chat(question.to_messages()).content
+
+    # Get the final response
+    #response = chat(question.to_messages()).content
+    response = chat4(question.to_messages()).content
+
     archive_completion(question.to_messages(), response)
     return response
 
 def call_parking_api(username, message, sql_query):
-    payload = {"api_key": getenv("PARKING_API_KEY"), "query": sql_query, "username": username, "message": message}
+    '''
+    Calls the parking api with the given SQL query
+    :param username:
+    :param message:
+    :param sql_query:
+    :return:
+    '''
+    payload = {
+        "api_key": getenv("PARKING_API_KEY"),
+        "query": sql_query,
+        "username": username, # Not implemented, for future
+        "message": message}
     url = getenv("PARKING_API_URL") + '/query'
     response = requests.get(url, params=payload)
 
@@ -96,6 +169,12 @@ def call_parking_api(username, message, sql_query):
         raise Exception(f"Error calling API. Status code: {response.status_code}, response: {response.text}")
 
 def archive_completion(prompt_messages, response):
+    '''
+    Save a simple text copy of every completion, because they're expensive and we'll probably want them again
+    :param prompt_messages:
+    :param response:
+    :return:
+    '''
     with open('logs/completion_archive.txt', 'a') as f:
         f.write("Prompt Messages:\n")
         for prompt in prompt_messages:
@@ -109,6 +188,11 @@ def archive_completion(prompt_messages, response):
         f.write("\n\n")
 @app.route('/completion', methods=['POST'])
 def completion():
+    '''
+    The completion endpoint. Gets a message and generates the executes the chain.
+    Returns to the user the message which should be shown in the UI
+    :return:
+    '''
     api_key = request.form.get('api_key')
     username = request.form.get('username')
     message = request.form.get('message')
@@ -131,7 +215,7 @@ def completion():
     if len(parking_info) < 5:
         logger.error(f'Parking API returned too little data: {parking_info}')
         try_again = f"This query didn't quite work:\n {sql_query}.\nHere was the original request:\n{message}\nPlease try again."
-        sql_query = get_sql_query(try_again)
+        sql_query = get_sql_query(try_again, gpt4=True)
         logger.info(f'Got a new SQL query from OpenAI: {sql_query}')
         parking_info = call_parking_api(username, message, sql_query)
         parking_info = "I couldn't get any parking information. Tell the user to try and ask in a different way." if len(parking_info) < 5 else parking_info
@@ -141,6 +225,7 @@ def completion():
     logger.info(f'Got final answer: {final_answer}')
 
     # TODO: REMOVE PRINTING SQL QUERY TO DISCORD
+    # Just delete this whole thing, final_answer is perfect above
     final_answer = f"Final Answer:\n {final_answer}" + f"\nSQL:\n {sql_query}"
 
     return make_response(jsonify(final_answer), 200, {'Content-Type': 'application/json'})
