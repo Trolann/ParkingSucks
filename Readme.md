@@ -13,20 +13,19 @@ Assume all code generated fully, mostly or in part by GPT3.5 or GPT4. Exact prom
 User              Discord             ParkingSucksBot             CompletionAPI           ModerationEP                    GPT               Parking-API
  |                    |                    |                          |                         |                          |                     |
  |-------Log in------>|                    |                          |                         |                          |                     |
- |                    |                    |                          |                         |                          |                     |
  |---Ask question---->|                    |                          |                         |                          |                     |
- |                    |--Forward questio-->|                          |                         |                          |                     |
+ |                    |-Forwards question->|                          |                         |                          |                     |
  |                    |                    |----Call CompletionAPI--->|                         |                          |                     |
  |                    |                    |                          |-->Validate API Key      |                          |                     |
  |                    |                    |                          |<-----------------|      |                          |                     |
  |                    |                    |                          |------Check Moderation-->|                          |                     |
  |                    |                    |                          |------------------Generate SQL Query--------------> |                     |
- |                    |                    |                          |                         |                          |---Run SQL Query---->|
+ |                    |                    |                          |<----------------Return SQL query-------------------|                     |
+ |                    |                    |                          |-------------------------------Run SQL Query----------------------------->|
  |                    |                    |                          |<-----------------------------Return query results------------------------|
- |                    |                    |                          |--------------Generate final answer strin---------->|                     |
- |                    |                    |                          |<------------Return Answer String-------------------|                     |
- |                    |                    |                          |<-Return Answer String---|                          |                     |
- |                    |                    |<--Post Answer to Discord-|                         |                          |                     |
+ |                    |                    |                          |--------------Generate final answer string--------->|                     |
+ |                    |                    |                          |<------------Return answer String-------------------|                     |
+ |                    |                    |<--Return answer via API--|                         |                          |                     |
  |                    |<--Display Answer---|                          |                         |                          |                     |
 ```
 
