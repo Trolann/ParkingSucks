@@ -9,6 +9,9 @@ db = Config()
 
 @app.route('/latest')
 def get_latest():
+    """
+    This route returns the latest data from a specified table in the database.
+    """
     logger.info(f'Got API request for latest data from {request.remote_addr}')
     table = request.args.get('table')
     try:
@@ -18,8 +21,12 @@ def get_latest():
         return jsonify({"error": f"Error getting latest data"}), 500
     return jsonify(result)
 
+# TODO: Broken query
 @app.route('/yesterday')
 def get_yesterday():
+    """
+    This route returns yesterday's data from a specified table in the database.
+    """
     logger.info(f'Got API request for latest data from {request.remote_addr}')
     table = request.args.get('table')
     try:
@@ -30,8 +37,12 @@ def get_yesterday():
 
     return jsonify(results)
 
+# TODO: Broken query
 @app.route('/lastweek')
 def get_last_week():
+    """
+    This route returns data from the last week from a specified table in the database.
+    """
     logger.info(f'Got API request for yesterday\'s data from {request.remote_addr}')
     table = request.args.get('table')
     try:
@@ -43,17 +54,22 @@ def get_last_week():
 
 @app.route('/query')
 def run_query():
+    """
+    This route runs a specified SQL query on the database and returns the results.
+    """
     logger.info(f'Got API request to run query {request.remote_addr}')
     logger.info(f'Query: {request.args.get("query")}')
     api_key = request.args.get('api_key')
     sql_query = request.args.get('query')
 
+    # Check API key
     if api_key != os.environ.get('API_KEY'):
         logger.error(f'Invalid API key from {request.remote_addr}')
         logger.error(f'Given API key: {api_key}')
         logger.error(f'Given query: {sql_query}')
         return jsonify({"error": "Invalid API Key"}), 401
 
+    # Run query
     try:
         results = db.run_query(sql_query)
     except Exception as e:
@@ -62,6 +78,8 @@ def run_query():
 
     logger.info(f'Found {len(results)} results')
     return_val = ''
+
+    # Format results into a string
     for item in results:
         parking_info = item.get('parking_info', '')
         if parking_info:
