@@ -61,7 +61,13 @@ def run_query():
         return jsonify({"error": f"Error running query"}), 500
 
     logger.info(f'Found {len(results)} results')
-    return jsonify(results)
+    return_val = ''
+    for item in results:
+        parking_info = item.get('parking_info', '')
+        if parking_info:
+            return_val += parking_info + '\n'
+    logger.info(f'Results: {return_val}')
+    return jsonify(return_val)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

@@ -56,3 +56,11 @@ class TestURLStatusCodes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# GPT-4 Prompt:
+# Gave the entire codebase and said:
+# Write unit tests that ensure the garage names are in the list South Garagem North Garage, West Garage,
+# South Campus Garage, and that the fullness is between 0 and 100, and that the timestamp is within the last 6 hours.
+
+# GPT-4 Prompt:
+# Write a unittest that will query parkingsucks.com and ensure that the status code is 200.

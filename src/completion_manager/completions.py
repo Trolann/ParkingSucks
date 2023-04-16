@@ -32,6 +32,7 @@ def complete_moderation_chain(query: str) -> bool:
 
 def is_this_ok(query) -> bool:
     response = chat(query.to_messages()).content
+    archive_completion(query.to_messages(), response)
     logger.info(f'Got response: {response} (query: {query})')
     if '@@@@@@@@' in response:
         logger.critical(f"UNSAFE QUERY DETECTED: {query}")
@@ -43,16 +44,46 @@ def is_this_ok(query) -> bool:
         logger.error(f'Unable to determine safety of query: {query}')
         return False
 
+def valide_sql_query(sql_query):
+    malicious_keywords = ['DROP', 'ALTER', 'CREATE', 'UPDATE', 'DELETE', 'INSERT', 'GRANT', 'REVOKE']
+    for keyword in malicious_keywords:
+        if keyword.lower() in sql_query.lower():
+            logger.error(f"Malicious keyword '{keyword}' found in SQL query: {sql_query}")
+            return False
+    return True
+
 def get_sql_query(question) -> str:
+    query = None
     logger.info(f'Getting SQL query for question: {question}')
     question = get_sql_gen_prompt(question)
-    return chat(question.to_messages()).content
+    response = chat(question.to_messages()).content
+    logger.info(f'Got response: \n{response}\n')
+    if not response.startswith('SELECT'):
+        query_start = response.find("!!!!!!!!")
+        if query_start == -1:
+            logger.error(f'Unable to find query in response: {response}')
+            return ''
+        query_start += len("!!!!!!!!")
+        query_end = len(response)
+        query = response[query_start:query_end]
+        return_val = query.replace("\n", " ")
+        logger.info(f'Extracted query: \n{return_val}\n')
+    else:
+        return_val = response
+
+    archive_completion(question.to_messages(), response)
+    if not valide_sql_query(return_val):
+        logger.error(f'Invalid SQL query: {return_val}')
+        return ''
+    return return_val
 
 
 def get_final_answer(question, parking_info) -> str:
     logger.info(f'Getting final answer for question: {question}')
     question = get_final_answer_prompt(question, parking_info)
-    return chat(question.to_messages()).content
+    response = chat(question.to_messages()).content
+    archive_completion(question.to_messages(), response)
+    return response
 
 def call_parking_api(username, message, sql_query):
     payload = {"api_key": getenv("PARKING_API_KEY"), "query": sql_query, "username": username, "message": message}
@@ -64,6 +95,18 @@ def call_parking_api(username, message, sql_query):
     else:
         raise Exception(f"Error calling API. Status code: {response.status_code}, response: {response.text}")
 
+def archive_completion(prompt_messages, response):
+    with open('logs/completion_archive.txt', 'a') as f:
+        f.write("Prompt Messages:\n")
+        for prompt in prompt_messages:
+            try:
+                f.write(json.dumps(prompt, indent=4))
+            except TypeError:
+                f.write(str(prompt))
+            f.write("\n")
+        f.write("\nResponse:\n")
+        f.write(json.dumps(response, indent=4))
+        f.write("\n\n")
 @app.route('/completion', methods=['POST'])
 def completion():
     api_key = request.form.get('api_key')
@@ -75,19 +118,30 @@ def completion():
         logger.error(f'Invalid API key: {api_key} from {request.remote_addr}/{username}')
         return jsonify({'error': 'Invalid API key'}), 401
 
-    #is_ok = is_this_ok(get_safety_prompt(message))
+    is_ok = is_this_ok(get_safety_prompt(message))
 
-    #if not is_ok:
-    #    logger.info(f'Query not allowed: {message} (username: {username})')
-    #    return jsonify({'error': 'Query not allowed'}), 400
+    if not is_ok:
+        logger.info(f'Query not allowed: {message} (username: {username})')
+        return jsonify({'error': 'Query not allowed'}), 400
 
     sql_query = get_sql_query(message)
     logger.info(f'Got SQL query from OpenAI: {sql_query}')
-
     parking_info = call_parking_api(username, message, sql_query)
+
+    if len(parking_info) < 5:
+        logger.error(f'Parking API returned too little data: {parking_info}')
+        try_again = f"This query didn't quite work:\n {sql_query}.\nHere was the original request:\n{message}\nPlease try again."
+        sql_query = get_sql_query(try_again)
+        logger.info(f'Got a new SQL query from OpenAI: {sql_query}')
+        parking_info = call_parking_api(username, message, sql_query)
+        parking_info = "I couldn't get any parking information. Tell the user to try and ask in a different way." if len(parking_info) < 5 else parking_info
     logger.info(f'Called parking API: {parking_info}')
+
     final_answer = get_final_answer(message, parking_info)
     logger.info(f'Got final answer: {final_answer}')
+
+    # TODO: REMOVE PRINTING SQL QUERY TO DISCORD
+    final_answer = f"Final Answer:\n {final_answer}" + f"\nSQL:\n {sql_query}"
 
     return make_response(jsonify(final_answer), 200, {'Content-Type': 'application/json'})
 

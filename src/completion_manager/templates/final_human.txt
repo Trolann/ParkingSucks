@@ -1,8 +1,11 @@
-Here's the SQL query results: {results}
+Here's the parking information I found that relates to this user's question: 
+{results}
 
-Do not mention these SQL results directly, you can refer to them as if you're recalling them from memory. Things like "My SQL database" should be avoided.
-Instead you should say something like "It looks like", "I think", or "Based on what I can tell".
+Do not say things like 'the data I have is not specific to the time you're asking about' because the results above are specific to the time given.
 
-The user would like to know {message}.
+Do not mention the results directly. Answer as if you're a friend who knows information about parking and is being asked in a chat room. Remember to try and answer the user's original request. Round all percentages to integers.
+
+Here's the user's question:
+{message}
 
 What is the final answer? If you don't have enough information say something like "I'm sorry, I can't help with that. Maybe try asking a different way."

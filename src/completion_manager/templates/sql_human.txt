@@ -1,18 +1,31 @@
-I have a question about parking. I'll give you my question below and I need you to give me just the SQL query to get the results. You should return no markdown or other words, just the select and associated SQL commands
+I have a question about parking. We're going to:
+1) Generate a SQL query to get information about parking that will answer my question
+2) Run the SQL query
+3) Use those results to get an answer to my question.
 
-Make sure to use current date functions from SQL to query and return the 'name' columns with the results.
+First, let's get the SQL query based on the schema provided. Use current date and other SQL functions to get all the information you need. Make sure the results are pre-formatted in a way that lets the large language model answer my question later
 
-Example Question: "What is the average parking fullness for my class which starts at 9:30am?"
-Example SQL Query:
-SELECT CONCAT(MIN(fullness), '% to ', MAX(fullness), '%') AS expected_fullness_range
-FROM sjsu
-WHERE
-    TIME(time) BETWEEN TIME(DATE_ADD('09:30:00', INTERVAL -90 MINUTE)) AND TIME(DATE_ADD('09:30:00', INTERVAL -30 MINUTE))
-This is a good because it returns
-
+Example Question: "How full are the garages for my class that start at 9am on Monday's?"
 Here's a bad example:
 SELECT fullness AS percent_full FROM sjsu WHERE DAYOFWEEK(time) = 2 AND TIME(time) BETWEEN '09:00:00' AND '09:30:00'
-This is bad because it doesn't return the 'name' column, so later LLMs can't tell the user information about the 4 garages.
+This is bad because it doesn't return the 'name' column, so later LLMs can't tell the user information about the 4 garages. It also has no limit on the rows returned; your version should have as few rows as possible.
+
+
+Here's a good example:
+SELECT 
+  CONCAT('GarageName: ', name, ', Min: ', MIN(fullness), '%, Mean: ', ROUND(AVG(fullness), 2), '%, Max: ', MAX(fullness), '%, STDEV: ', ROUND(STD(fullness), 2), '%') AS parking_info 
+FROM 
+  sjsu 
+WHERE 
+  DAYOFWEEK(time) = 2 AND TIME(time) BETWEEN '09:00:00' AND '09:01:00' 
+GROUP BY 
+  name;
+This is a good because it returns all of the possible information needed to answer the question about each garage in an easy to read format, without a lot of filler, like this:
+GarageName: North Garage , Min: 58%, Mean: 58.00%, Max: 58%, STDEV: 0.00%
+GarageName: South Campus Garage , Min: 5%, Mean: 5.00%, Max: 5%, STDEV: 0.00%
+GarageName: South Garage , Min: 83%, Mean: 84.00%, Max: 85%, STDEV: 1.00%
+GarageName: West Garage , Min: 61%, Mean: 61.50%, Max: 62%, STDEV: 0.50%
+
 
 Here's my question:
 {question}

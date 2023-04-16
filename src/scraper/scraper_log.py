@@ -10,7 +10,7 @@ class BotLog:
     def __init__(self, logger_name: str) -> None:
         self.log_level = getenv("LOG_LEVEL", "INFO")
         self.logger = getLogger(logger_name)
-        self.log_file_name = f"logs/api_{self.log_level}_{datetime.now().strftime('%b').lower()}.log"
+        self.log_file_name = f"logs/sjsu_scraper_{self.log_level}_{datetime.now().strftime('%b').lower()}.log"
         self.logger.setLevel(self.log_level)
         # Create the log file if it doesn't exist
         self.made_log_file = False

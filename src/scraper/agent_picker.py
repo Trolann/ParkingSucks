@@ -1,5 +1,7 @@
 import random
 
+# Function obtained from https://github.com/stayml/popular-recent-useragents-list
+
 def random_ua(k=1):
     # returns a random useragent from the latest user agents strings list, weighted
     # according to observed prevalence

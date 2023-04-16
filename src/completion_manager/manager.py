@@ -9,13 +9,7 @@ API_KEY = os.environ.get('API_KEY')
 PARKING_API_URL = os.environ.get('PARKING_API_URL')
 logger = BotLog('completion-manager')
 
-def validate_sql_query(sql_query):
-    malicious_keywords = ['DROP', 'ALTER', 'CREATE', 'UPDATE', 'DELETE', 'INSERT', 'GRANT', 'REVOKE']
-    for keyword in malicious_keywords:
-        if keyword.lower() in sql_query.lower():
-            logger.error(f"Malicious keyword '{keyword}' found in SQL query: {sql_query}")
-            return False
-    return True
+
 
 def call_query_endpoint(sql_query):
     if not validate_sql_query(sql_query):
