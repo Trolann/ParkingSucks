@@ -62,7 +62,7 @@ def is_this_ok(query) -> bool:
         logger.error(f'Unable to determine safety of query: {query}')
     return False
 
-def valide_sql_query(sql_query):
+def validate_sql_query(sql_query):
     '''
     Simple string check to ensure no malicious commands are being executed.
     :param sql_query:
@@ -78,6 +78,12 @@ def valide_sql_query(sql_query):
             return False
     return True
 
+# TODO: Breakout into it's own file.
+# TODO: Assume we're looking for future parking information
+# TODO: REDO SQL FLOW BY:
+# TODO: Check if we can use the Parking API endpoints first
+# TODO: Check if we have an example query to run to get the information
+# TODO: Generate the query with the example if able, if not just try your best
 def get_sql_query(question, gpt4=False) -> str:
     '''
     Sends requests to the model to get a runnable SQL query. Takes the response and finds the query
@@ -124,7 +130,7 @@ def get_sql_query(question, gpt4=False) -> str:
     archive_completion(question.to_messages(), response)
 
     # Basic text string checks
-    if not valide_sql_query(return_val):
+    if not validate_sql_query(return_val):
         logger.error(f'Invalid SQL query: {return_val}')
         return ''
     return return_val
@@ -141,8 +147,8 @@ def get_final_answer(question, parking_info) -> str:
     question = get_final_answer_prompt(question, parking_info)
 
     # Get the final response
-    #response = chat(question.to_messages()).content
-    response = chat4(question.to_messages()).content
+    response = chat(question.to_messages()).content
+    #response = chat4(question.to_messages()).content
 
     archive_completion(question.to_messages(), response)
     return response
@@ -226,7 +232,7 @@ def completion():
 
     # TODO: REMOVE PRINTING SQL QUERY TO DISCORD
     # Just delete this whole thing, final_answer is perfect above
-    final_answer = f"Final Answer:\n {final_answer}" + f"\nSQL:\n {sql_query}"
+    # final_answer = f"Final Answer:\n {final_answer}" + f"\nSQL:\n {sql_query}"
 
     return make_response(jsonify(final_answer), 200, {'Content-Type': 'application/json'})
 

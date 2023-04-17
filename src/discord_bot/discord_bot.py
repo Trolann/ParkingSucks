@@ -46,10 +46,9 @@ async def on_ready():
 @bot.event
 async def on_message(message):
     # Ignore messages from the bot itself
-    if message.author == bot.user:
+    if message.author == bot.user or 'system' in message.channel.name:
         return
 
-    print(message.content)
     # Call Flask API with username and message content
     response = await call_completion_api(str(message.author), message.content)
 
@@ -58,6 +57,8 @@ async def on_message(message):
         await message.reply("Sorry, that didn't work")
     else:
         await message.reply(response)
+        # Get the system channel using discord.py
+        # system_channel = bot.get_channel(1096444199433408632)
 
 # Run the bot
 bot.run(TOKEN)
