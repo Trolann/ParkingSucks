@@ -7,11 +7,26 @@ app = Flask(__name__)
 logger = BotLog('api')
 db = Config()
 
+def valid_api_key(reqest: request) -> bool:
+    """
+    Check if the API key is valid.
+    """
+    api_key = request.args.get('api_key')
+    if api_key != os.environ.get('API_KEY'):
+        logger.error(f'Invalid API key from {request.remote_addr}')
+        logger.error(f'Given API key: {api_key}')
+        return False
+    return True
+
 @app.route('/latest')
 def get_latest():
     """
     This route returns the latest data from a specified table in the database.
     """
+    if valid_api_key(request):
+        # We have a valid API key, allow for custom SQL parameters (extract them here)
+        pass
+
     logger.info(f'Got API request for latest data from {request.remote_addr}')
     table = request.args.get('table')
     try:
@@ -27,6 +42,10 @@ def get_yesterday():
     """
     This route returns yesterday's data from a specified table in the database.
     """
+    if valid_api_key(request):
+        # We have a valid API key, allow for custom SQL parameters (extract them here)
+        pass
+
     logger.info(f'Got API request for latest data from {request.remote_addr}')
     table = request.args.get('table')
     try:
@@ -43,6 +62,9 @@ def get_last_week():
     """
     This route returns data from the last week from a specified table in the database.
     """
+    if valid_api_key(request):
+        # We have a valid API key, allow for custom SQL parameters (extract them here)
+        pass
     logger.info(f'Got API request for yesterday\'s data from {request.remote_addr}')
     table = request.args.get('table')
     try:
@@ -57,18 +79,12 @@ def run_query():
     """
     This route runs a specified SQL query on the database and returns the results.
     """
-    logger.info(f'Got API request to run query {request.remote_addr}')
-    logger.info(f'Query: {request.args.get("query")}')
-    api_key = request.args.get('api_key')
-    sql_query = request.args.get('query')
-
-    # Check API key
-    if api_key != os.environ.get('API_KEY'):
-        logger.error(f'Invalid API key from {request.remote_addr}')
-        logger.error(f'Given API key: {api_key}')
-        logger.error(f'Given query: {sql_query}')
+    if not valid_api_key(request):
         return jsonify({"error": "Invalid API Key"}), 401
 
+    logger.info(f'Got API request to run query {request.remote_addr}')
+    logger.info(f'Query: {request.args.get("query")}')
+    sql_query = request.args.get('query')
     # Run query
     try:
         results = db.run_query(sql_query)
