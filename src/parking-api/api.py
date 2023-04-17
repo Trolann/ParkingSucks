@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from api_log import BotLog
 import os
 from mariadb import Config
-
+from datetime import datetime
 app = Flask(__name__)
 logger = BotLog('api')
 db = Config()
@@ -36,7 +36,6 @@ def get_latest():
         return jsonify({"error": f"Error getting latest data"}), 500
     return jsonify(result)
 
-# TODO: Broken query
 @app.route('/yesterday')
 def get_yesterday():
     """
@@ -52,7 +51,7 @@ def get_yesterday():
         results = db.get_yesterday(table)
     except Exception as e:
         logger.error(f'Error getting latest data: {e}')
-        return jsonify({"error": f"Error getting latest data"}), 500
+        return jsonify({"error": f"Error getting yesterday's data"}), 500
 
     return jsonify(results)
 
@@ -72,6 +71,29 @@ def get_last_week():
     except Exception as e:
         logger.error(f'Error getting latest data: {e}')
         return jsonify({"error": f"Error getting latest data"}), 500
+    return jsonify(results)
+
+
+@app.route('/average')
+def get_average():
+    """
+    This route returns the average fullness of a specified day of the week for the current semester.
+    :return:
+    """
+    if valid_api_key(request):
+        # We have a valid API key, allow for custom SQL parameters (extract them here)
+        pass
+    logger.info(f'Got API request for average fullness from {request.remote_addr}')
+    table = request.args.get('table')
+    day = request.args.get('day')
+    time = request.args.get('time')
+    # convert time to datetime
+    time = datetime.strptime(time, '%H:%M:%S').time()
+    try:
+        results = db.get_average(table, day, time)
+    except Exception as e:
+        logger.error(f'Error getting average fullness: {e}')
+        return jsonify({"error": f"Error getting average fullness"}), 500
     return jsonify(results)
 
 @app.route('/query')

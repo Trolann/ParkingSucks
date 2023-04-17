@@ -29,32 +29,46 @@ class Config:
 
     def get_latest(self, table):
         cursor = self.conn.cursor(dictionary=True)
-        cursor.execute(f'SELECT * FROM {table} ORDER BY time DESC LIMIT 1;')
+        cursor.execute(f'''
+            WITH latest_time AS (
+                SELECT name, MAX(time) AS most_recent_time
+                FROM {table}
+                GROUP BY name
+            )
+            SELECT CONCAT(t.fullness, '%') AS fullness, lt.name
+            FROM latest_time lt
+            JOIN {table} t ON lt.name = t.name AND lt.most_recent_time = t.time
+            UNION ALL
+            SELECT NULL AS fullness, CONCAT('Data above is current through the most recent time: ', MAX(lt.most_recent_time)) AS name
+            FROM latest_time lt;
+        ''')
         try:
-            result = cursor.fetchone()
+            result = cursor.fetchall()
+            print(result)
         except Exception as e:
             logger.error(f'Could not get latest entry in {table}: {e}')
             return None
-        logger.info(f'Found {len(result)} results for latest entry in {table}')
+        num_results = len(result) if result else 0
+        logger.info(f'Found {num_results} results for latest entry in {table}')
         return result
 
     def get_yesterday(self, table):
         cursor = self.conn.cursor(dictionary=True)
-        time_yesterday = datetime.now() - timedelta(days=1)
-        query = f"SELECT * FROM {table} WHERE time >= '{time_yesterday}' AND time < '{time_yesterday + timedelta(minutes=1)}' ORDER BY time DESC;"
-        cursor.execute(query)
-        try:
-            results = cursor.fetchall()
-        except Exception as e:
-            logger.error(f'Could not get yesterday\'s entries in {table}: {e}')
-            return None
-        logger.info(f'Found {len(results)} results for yesterday in {table}')
-        return results
-
-    def get_last_week(self, table):
-        cursor = self.conn.cursor(dictionary=True)
         time_last_week = datetime.now() - timedelta(weeks=1)
-        query = f"SELECT * FROM {table} WHERE time >= '{time_last_week}' AND time < '{time_last_week + timedelta(minutes=1)}' ORDER BY time DESC;"
+        query = f'''
+            SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
+            FROM {table}
+            WHERE time >= DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY), INTERVAL -30 MINUTE)
+            AND time < CURRENT_DATE()
+            GROUP BY name
+            UNION ALL
+    
+            SELECT CONCAT('Data above is for ', 
+                  DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY), INTERVAL -30 MINUTE),
+                  ' to ', 
+                  CURRENT_DATE()
+                 ) AS message, '' AS name;        
+        '''
         cursor.execute(query)
         try:
             results = cursor.fetchall()
@@ -62,6 +76,61 @@ class Config:
             logger.error(f'Could not get last week\'s entries in {table}: {e}')
             return None
         logger.info(f'Found {len(results)} results for last week in {table}')
+        return results
+
+    def get_last_week(self, table):
+        cursor = self.conn.cursor(dictionary=True)
+        time_yesterday = datetime.now() - timedelta(days=1)
+        query = f'''
+        SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
+        FROM {table}
+        WHERE time >= DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL -7 DAY), INTERVAL -30 MINUTE)
+        AND time < CURRENT_DATE()
+        GROUP BY name
+        UNION ALL
+
+        SELECT CONCAT('Data above is for ', 
+              DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL -7 DAY), INTERVAL -30 MINUTE),
+              ' to ', 
+              DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)
+             ) AS message, '' AS name;
+'''
+        cursor.execute(query)
+        try:
+            results = cursor.fetchall()
+            print(results)
+        except Exception as e:
+            logger.error(f'Could not get yesterday\'s entries in {table}: {e}')
+            return None
+        logger.info(f'Found {len(results)} results for yesterday in {table}')
+        return results
+
+    def get_average(self, table, day, time):
+        cursor = self.conn.cursor(dictionary=True)
+        query = f"""
+            SELECT name, CONCAT(CEILING(AVG(fullness)), '%') AS fullness
+            FROM {table}
+            WHERE DAYNAME(time) = '{day}'
+              AND TIME(time) BETWEEN ADDTIME('{time}', '-01:00:00') AND '{time}'
+            GROUP BY name
+            WITH ROLLUP
+            
+            UNION ALL
+            
+            SELECT CONCAT('Data above is average fullness for ', '{day}', ' at ', '{time}') AS name, CONCAT(CEILING(AVG(fullness)), '%') AS fullness
+            FROM {table}
+            WHERE DAYNAME(time) = '{day}'
+              AND TIME(time) BETWEEN ADDTIME('{time}', '-01:00:00') AND '{time}'
+
+        """
+        cursor.execute(query)
+        try:
+            results = cursor.fetchall()
+            print(results)
+        except Exception as e:
+            logger.error(f'Could not get average fullness for {table}: {e}')
+            return None
+        logger.info(f'Found {len(results)} results for {day} at {time} in {table}')
         return results
 
     def run_query(self, sql_query):

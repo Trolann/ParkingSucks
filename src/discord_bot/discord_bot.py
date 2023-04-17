@@ -4,6 +4,9 @@ from os import getenv
 from discord_log import BotLog
 from discord.ext import commands
 
+# Remove these when you remove call_parking_api
+from re import sub
+
 # Replace 'your_bot_token' with your actual bot token
 TOKEN = getenv('DISCORD_TOKEN')
 logger = BotLog('discord-bot')
@@ -33,6 +36,76 @@ async def call_completion_api(username, message):
             return {'error': 'Error calling completion API'}
         return response
 
+# TODO: REMOVE, ONLY NEEDED FOR DEBUG
+def make_pretty(query_results):
+    # Determine the maximum length for each column
+    column_widths = {}
+    data_line = ''
+    for entry in query_results:
+        print(f'entry: {entry}')
+        for key, value in entry.items():
+            if key == 'address':
+                continue
+            if key not in column_widths and 'Data above' not in str(value):
+                column_widths[key] = len(str(key))
+            if 'Data above' in str(value):
+                data_line = str(value)
+                continue
+            column_widths[key] = max(column_widths[key], len(str(value)))
+
+    # Create the header row
+    header = '| ' + ' | '.join([f"{key:<{column_widths[key]}}" for key in column_widths]) + ' |'
+    separator = '+-' + '-+-'.join(['-' * column_widths[key] for key in column_widths]) + '-+'
+
+    # Create the table rows
+    rows = []
+    for i, entry in enumerate(query_results):
+        # Check if this is the last row
+        if i == len(query_results) - 1:
+            # Append just the value of the last column
+            row = '\n' + data_line
+        else:
+            # Append the full row
+            try:
+                row = '| ' + ' | '.join([f"{entry[key]:<{column_widths[key]}}" for key in column_widths]) + ' |'
+            except Exception as e:
+                pass
+        rows.append(row)
+
+    # Combine the header, separator, and rows
+    table = '\n'.join([header, separator] + rows)
+    return '```\n' + table + '\n```'
+
+async def call_parking_api(username, endpoint, params=None, sql_query=None):
+    '''
+    Call the parking API to get the data
+    :param username:
+    :param message:
+    :param sql_query:
+    :param endpoint:
+    :return:
+    '''
+    async with aiohttp.ClientSession() as session:
+        url = f"{getenv('PARKING_API_URL')}/{endpoint}"
+        payload = {
+            "api_key": getenv("PARKING_API_KEY"),
+            "username": username,
+        }
+        if params:
+            for p in params:
+                payload[p] = params[p]
+        if sql_query:
+            payload['sql_query'] = sql_query
+        try:
+            response = await session.get(url, params=payload)
+        except Exception as e:
+            raise Exception(f"Error calling parking API: {e}")
+        if response.status == 200:
+            return make_pretty(await response.json())
+        else:
+            raise Exception(f"Error calling API. Status code: {response.status}, response: {response.text}")
+
+
 async def fetch(session, url, api_key, username, message):
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     data = {'api_key': api_key, 'username': username, 'message': message}
@@ -46,7 +119,21 @@ async def on_ready():
 @bot.event
 async def on_message(message):
     # Ignore messages from the bot itself
-    if message.author == bot.user or 'system' in message.channel.name:
+    if message.author == bot.user:
+        return
+
+    if 'system' in message.channel.name:
+        # Extracting endpoint_name and parameters from message.content
+        print('system message')
+        message_parts = message.content.split()
+        endpoint_name = message_parts.pop(0)
+        params = {}
+        for part in message_parts:
+            key, value = part.split('=')
+            params[key] = value
+
+        # Calling the modified call_parking_api function
+        await message.reply(await call_parking_api(str(message.author), endpoint_name, params=params))
         return
 
     # Call Flask API with username and message content
