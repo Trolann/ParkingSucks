@@ -62,3 +62,23 @@ async def on_message(message):
 
 # Run the bot
 bot.run(TOKEN)
+
+# Prompt 1:
+# Create a python discord bot which:
+# - listens for user messages (needs messages intents)
+# - takes the message and passes it with the username to a flask API located at 192.168.1.1:8080
+# using JSON
+# - waits for a response from the API which could take up to 1 minute
+# - Replies to the user with the response
+
+# Prompt 2:
+# Setup a discord.py bot that prints to the console the invite link
+# every user uses to join a server as they join.
+# Don't explain, just show code.
+
+# Prompt 3:
+# <Gave Code>
+# This snippet is returning JSON like this:
+# {'error': 'Query not allowed'}
+# Change it so instead if 'error' is present it says "Sorry, that didn't work"
+# and if it's not present it prints the value of the response only, not the entire formatted json

@@ -238,3 +238,31 @@ def completion():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
+
+# Prompt 1:
+# Add a flask api to this application. There should be 1 end-point: /completion
+# which confirms the API_KEY environment variable matches the api_key argument.
+# The 'query' argument should be passed to the 'is_this_ok' function and if it's ok,
+# then to the 'get_sql_query' function. The /completion endpoint should return
+# the result of get_sql_query.
+
+# Prompt 2:
+# Write python function(s) to call this api with the required parameters and
+# decode the response. Update the parking-api.py file as needed.
+
+# Prompt 3:
+# <Gave Code>
+# <Gave errors>
+# <Gave API endpoint code>
+# How can I properly decode final_answer in the discord bot to display it in the chat room?
+
+# Prompt 4:
+# This function:
+# <gave get_sql_query>
+# Is taking this response value:
+# <Gave example response>
+# and not properly returning the extracted SQL query. Fix it, please.
+
+# Prompt 5:
+# Take this query and use the CONCAT or similar function to add a single row to the top that says:
+# Data generated for Tuesday and Thursday's from 12:30pm until 1:30pm.

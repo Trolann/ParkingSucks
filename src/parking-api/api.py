@@ -105,3 +105,30 @@ def run_query():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+
+# Prompt 1:
+# We're making a flask API to query a database and return the results in a JSON format.
+# Here's the schema for each table:
+#             CREATE TABLE IF NOT EXISTS %s (
+#                 `id` INT AUTO_INCREMENT PRIMARY KEY,
+#                 `name` TEXT NOT NULL,
+#                 `address` TEXT NOT NULL,
+#                 `fullness` INT NOT NULL,
+#                 `time` DATETIME NOT NULL
+# Endpoints:
+# /latest - gets the latest parking data
+# /yesterday - gets the data from this time yesterday
+# /lastweek - gets the data from this time last week
+# /query - takes in 2 parameters: an api get and a SQL query. Runs the SQL query and returns the results.
+# Generate api.py, requirements.txt and Dockerfile
+
+# Prompt 2:
+# <Gave code>
+#Update this api.py file to use this mariadb.py file.
+# Move SQL related functions and commands to the mariadb.py file and leave API
+# commands and calls to the mariadb.py file in the api.py file. There should be 1 connection
+# to the database which is used by all of the endpoints and each endpoint will pass the table to query.
+
+# Prompt 3:
+# this is close, but in this config all of them will use the same table (parking) and
+# not the given argument table. Correct it.
