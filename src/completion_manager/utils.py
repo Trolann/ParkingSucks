@@ -1,10 +1,13 @@
 import json
+from completion_log import BotLog
 
 from langchain.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+
+logger = BotLog('completion-manager')
 
 def get_prompt(query, prompt_type, results=None):
     '''
