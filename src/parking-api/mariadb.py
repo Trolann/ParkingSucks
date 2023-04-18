@@ -1,6 +1,5 @@
 import mysql.connector
 from os import getenv
-from dataclasses import dataclass
 from datetime import timedelta, datetime
 from api_log import BotLog
 from time import sleep
@@ -9,26 +8,49 @@ logger = BotLog('api-mariadb')
 
 class Config:
     def __init__(self):
-        # Try to connect to the MySQL server without an SSH tunnel
-        self.conn = mysql.connector.connect(
-            host=getenv("DB_HOST"),
-            user=getenv("DB_USER"),
-            password=getenv("DB_PASS"),
-            database=getenv("DB_NAME"),
-            port=getenv("DB_PORT")
-            )
+        self.conn = None
+        self.retry_connection()
 
-        if self.conn:
-            logger.info(f'Connected to MariaDB host {getenv("DB_HOST")}')
-        else:
-            logger.error(f'Could not connect to MariaDB host {getenv("DB_HOST")}')
-            self.__del__()
+    def retry_connection(self, max_retries=3, delay=5):
+        retries = 0
+        while retries < max_retries:
+            try:
+                self.conn = mysql.connector.connect(
+                    host=getenv("DB_HOST"),
+                    user=getenv("DB_USER"),
+                    password=getenv("DB_PASS"),
+                    database=getenv("DB_NAME"),
+                    port=getenv("DB_PORT")
+                )
+                if self.conn:
+                    logger.info(f'Connected to MariaDB host {getenv("DB_HOST")}')
+                    return
+            except Exception as e:
+                logger.error(f'Could not connect to MariaDB host {getenv("DB_HOST")}: {e}')
+                sleep(delay)
+                retries += 1
+
+        logger.error(f'Failed to connect to MariaDB host {getenv("DB_HOST")} after {max_retries} retries')
+        self.__del__()
 
     def __del__(self):
         self.conn.close()
 
+    def get_cursor(self):
+        cursor = None
+        try:
+            cursor = self.conn.cursor(dictionary=True)
+        except Exception as e:
+            if 'MySQL Connection not available' in str(e):
+                self.retry_connection()
+                cursor = self.conn.cursor(dictionary=True)
+            else:
+                logger.error(f"Could not create cursor for {getenv('DB_HOST')}: {e}")
+                return None
+        return cursor
+
     def get_latest(self, table):
-        cursor = self.conn.cursor(dictionary=True)
+        cursor = self.get_cursor()
         cursor.execute(f'''
             WITH latest_time AS (
                 SELECT name, MAX(time) AS most_recent_time
@@ -53,7 +75,7 @@ class Config:
         return result
 
     def get_yesterday(self, table):
-        cursor = self.conn.cursor(dictionary=True)
+        cursor = self.get_cursor()
         time_last_week = datetime.now() - timedelta(weeks=1)
         query = f'''
             SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
@@ -78,22 +100,23 @@ class Config:
         logger.info(f'Found {len(results)} results for last week in {table}')
         return results
 
+    # TODO: Update this to make sure it only pulls 30 minutes from last week
     def get_last_week(self, table):
-        cursor = self.conn.cursor(dictionary=True)
-        time_yesterday = datetime.now() - timedelta(days=1)
-        query = f'''
-        SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
-        FROM {table}
-        WHERE time >= DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL -7 DAY), INTERVAL -30 MINUTE)
-        AND time < CURRENT_DATE()
-        GROUP BY name
-        UNION ALL
+        cursor = self.get_cursor()
 
-        SELECT CONCAT('Data above is for ', 
-              DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL -7 DAY), INTERVAL -30 MINUTE),
-              ' to ', 
-              DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY)
-             ) AS message, '' AS name;
+        query = f'''
+            SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
+            FROM {table}
+            WHERE time >= DATE_ADD(NOW(), INTERVAL -168 HOUR) - INTERVAL 30 MINUTE
+            AND time < DATE_ADD(NOW(), INTERVAL -168 HOUR)
+            GROUP BY name
+            UNION ALL
+            
+            SELECT CONCAT('Data above is for ', 
+                  DATE_ADD(DATE_ADD(NOW(), INTERVAL -168 HOUR), INTERVAL -30 MINUTE),
+                  ' to ', 
+                  DATE_ADD(NOW(), INTERVAL -168 HOUR)
+                 ) AS message, '' AS name;
 '''
         cursor.execute(query)
         try:
@@ -106,7 +129,7 @@ class Config:
         return results
 
     def get_average(self, table, day, time):
-        cursor = self.conn.cursor(dictionary=True)
+        cursor = self.get_cursor()
         query = f"""
             SELECT name, CONCAT(CEILING(AVG(fullness)), '%') AS fullness
             FROM {table}
@@ -134,7 +157,7 @@ class Config:
         return results
 
     def run_query(self, sql_query):
-        cursor = self.conn.cursor(dictionary=True)
+        cursor = self.get_cursor()
         cursor.execute(sql_query)
         try:
             results = cursor.fetchall()
