@@ -166,3 +166,9 @@ class Config:
             return None
         logger.info(f'Found {len(results)} results for query {sql_query}')
         return results
+
+# Prompt 1:
+# This MariaDB (10.10) class sometimes throws this error:
+# [ERROR][api]: Error getting latest data: MySQL Connection not available.
+#
+# Update the class to try and get a new connection before throwing the exception. Ensure to log an error if needed.
