@@ -1,10 +1,13 @@
 import os
 from flask import request, jsonify, make_response
-from completions import app, is_this_ok, get_final_answer
-from parking_info import get_sql_query, call_parking_api
-from utils import get_prompt, logger
+from answer_chains import app, is_this_ok, get_final_answer
+from sql_chains import get_sql_query, call_parking_api
+from utils import get_prompt
+from completion_log import BotLog
 
+logger = BotLog('completion-api')
 
+# TODO: Implement async api calls
 @app.route('/completion', methods=['POST'])
 def completion():
     '''

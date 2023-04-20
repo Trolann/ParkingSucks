@@ -8,7 +8,7 @@ import requests
 
 from utils import get_prompt, archive_completion
 
-logger = BotLog('parking-info')
+logger = BotLog('sql-chains')
 chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),
     temperature=0.7

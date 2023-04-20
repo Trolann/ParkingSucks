@@ -70,8 +70,7 @@ def get_final_answer(question, parking_info) -> str:
     archive_completion(question.to_messages(), response)
     return response
 
-# TODO: Breakout to api.py
-# TODO: Implement async api calls
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

@@ -16,11 +16,11 @@ class Config:
         while retries < max_retries:
             try:
                 self.conn = mysql.connector.connect(
-                    host=getenv("DB_HOST"),
-                    user=getenv("DB_USER"),
-                    password=getenv("DB_PASS"),
-                    database=getenv("DB_NAME"),
-                    port=getenv("DB_PORT")
+                    host=getenv("USER_DB_HOST"),
+                    user=getenv("USER_DB_USER"),
+                    password=getenv("USER_DB_PASS"),
+                    database=getenv("USER_DB_NAME"),
+                    port=getenv("USER_DB_PORT")
                 )
                 if self.conn:
                     logger.info(f'Connected to MariaDB host {getenv("DB_HOST")}')
