@@ -1,5 +1,6 @@
 *.env
 *.xml
 *.log
+*.log.*
 /venv/*
 /.idea/*

@@ -16,11 +16,11 @@ class Config:
         while retries < max_retries:
             try:
                 self.conn = mysql.connector.connect(
-                    host=getenv("USER_DB_HOST"),
-                    user=getenv("USER_DB_USER"),
-                    password=getenv("USER_DB_PASS"),
-                    database=getenv("USER_DB_NAME"),
-                    port=getenv("USER_DB_PORT")
+                    host=getenv("DB_HOST"),
+                    user=getenv("DB_USER"),
+                    password=getenv("DB_PASS"),
+                    database=getenv("DB_NAME"),
+                    port=getenv("DB_PORT")
                 )
                 if self.conn:
                     logger.info(f'Connected to MariaDB host {getenv("DB_HOST")}')
@@ -37,7 +37,6 @@ class Config:
         self.conn.close()
 
     def get_cursor(self):
-        cursor = None
         try:
             cursor = self.conn.cursor(dictionary=True)
         except Exception as e:
@@ -80,16 +79,17 @@ class Config:
         query = f'''
             SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
             FROM {table}
-            WHERE time >= DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY), INTERVAL -30 MINUTE)
-            AND time < CURRENT_DATE()
+            WHERE time >= DATE_ADD(NOW(), INTERVAL -1 DAY) - INTERVAL 30 MINUTE
+            AND time < DATE_ADD(NOW(), INTERVAL -1 DAY) + INTERVAL 30 MINUTE
             GROUP BY name
             UNION ALL
-    
+            
             SELECT CONCAT('Data above is for ', 
-                  DATE_ADD(DATE_ADD(CURRENT_DATE(), INTERVAL -1 DAY), INTERVAL -30 MINUTE),
+                  DATE_ADD(NOW(), INTERVAL -1 DAY) - INTERVAL 30 MINUTE,
                   ' to ', 
-                  CURRENT_DATE()
-                 ) AS message, '' AS name;        
+                  DATE_ADD(NOW(), INTERVAL -1 DAY) + INTERVAL 30 MINUTE
+                 ) AS message, '' AS name;
+
         '''
         cursor.execute(query)
         try:
@@ -100,7 +100,6 @@ class Config:
         logger.info(f'Found {len(results)} results for last week in {table}')
         return results
 
-    # TODO: Update this to make sure it only pulls 30 minutes from last week
     def get_last_week(self, table):
         cursor = self.get_cursor()
 

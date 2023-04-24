@@ -1,11 +1,13 @@
-from flask import Flask, request, jsonify
+from quart import Quart, request, jsonify
 from api_log import BotLog
 import os
 from mariadb import Config
 from datetime import datetime
-app = Flask(__name__)
+
+app = Quart(__name__)
 logger = BotLog('api')
 db = Config()
+
 
 def valid_api_key(reqest: request) -> bool:
     """
@@ -55,7 +57,6 @@ def get_yesterday():
 
     return jsonify(results)
 
-# TODO: Broken query
 @app.route('/lastweek')
 def get_last_week():
     """
@@ -73,7 +74,7 @@ def get_last_week():
         return jsonify({"error": f"Error getting latest data"}), 500
     return jsonify(results)
 
-
+# TODO: Implement semesters
 @app.route('/average')
 def get_average():
     """

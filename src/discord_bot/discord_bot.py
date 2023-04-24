@@ -19,7 +19,7 @@ intents.members = True
 # Create bot instance
 bot = commands.Bot(command_prefix='$', intents=intents)
 
-async def call_completion_api(username, message):
+async def call_completion_api(username, message, channel):
     '''
     Call the completion API to get the messages
     :param username:
@@ -30,7 +30,7 @@ async def call_completion_api(username, message):
         url = getenv("COMPLETION_API_URL") + '/completion'
         api_key = getenv("COMPLETION_API_KEY")
         try:
-            response = await fetch(session, url, api_key, username, message)
+            response = await fetch(session, url, api_key, username, message, channel)
         except Exception as e:
             logger.error(f"Error calling completion API: {e}")
             return {'error': 'Error calling completion API'}
@@ -106,9 +106,9 @@ async def call_parking_api(username, endpoint, params=None, sql_query=None):
             raise Exception(f"Error calling API. Status code: {response.status}, response: {response.text}")
 
 
-async def fetch(session, url, api_key, username, message):
+async def fetch(session, url, api_key, username, message, channel):
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    data = {'api_key': api_key, 'username': username, 'message': message}
+    data = {'api_key': api_key, 'username': username, 'message': message, 'channel': channel}
     async with session.post(url, headers=headers, data=data) as response:
         return await response.json(content_type=None)
 
@@ -120,6 +120,11 @@ async def on_ready():
 async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
+        return
+
+    if message.content.lower().startswith('ping?'):
+        logger.info(f'Ping? Pong! received from {message.author} in {message.channel}')
+        await message.reply('pong!')
         return
 
     if 'system' in message.channel.name:
@@ -136,16 +141,21 @@ async def on_message(message):
         await message.reply(await call_parking_api(str(message.author), endpoint_name, params=params))
         return
 
-    # Call Flask API with username and message content
-    response = await call_completion_api(str(message.author), message.content)
-
-    # Check if response contains an error
-    if 'error' in response:
-        await message.reply("Sorry, that didn't work")
-    else:
-        await message.reply(response)
-        # Get the system channel using discord.py
-        # system_channel = bot.get_channel(1096444199433408632)
+    if bot.user in message.mentions:
+        if message.channel.category_id != 1099892029523247246:
+            await message.reply("Please use the 'ParkingSucks GPT Bot' categories for getting parking information.")
+            return
+        content = message.content.replace(f'<@!{bot.user.id}>', '', 1).lstrip()
+        if len(content) > 250:
+            await message.reply("Sorry, that message is too long. Try making your message shorter and asking more than one message to get the information you need.")
+            return
+        response = await call_completion_api(str(message.author), content, str(message.channel.name))
+        if 'error' in response:
+            await message.reply("Sorry, that didn't work")
+        else:
+            await message.reply(response)
+            # Get the system channel using discord.py
+            # system_channel = bot.get_channel(1096444199433408632)
 
 # Run the bot
 bot.run(TOKEN)

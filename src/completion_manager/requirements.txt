@@ -1,6 +1,10 @@
 aiohttp==3.8.4
-Flask==2.2.3
+quart==0.18.4
 langchain==0.0.139
 openai==0.27.4
 python-dotenv==1.0.0
 pinecone-client==2.2.1
+mysql-connector-python==8.0.28
+cryptography==39.0.1
+aiofile==3.8.5
+aiomysql==0.1.1

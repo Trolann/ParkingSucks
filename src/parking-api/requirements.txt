@@ -1,2 +1,2 @@
-Flask==2.1.2
+quart==0.18.4
 mysql-connector-python==8.0.28

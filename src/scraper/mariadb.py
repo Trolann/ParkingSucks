@@ -53,7 +53,7 @@ class Config:
         self.conn.commit()
         cursor.close()
 
-        # To programatically get the schema of the table for an LLM later if needed
+        # To programmatically get the schema of the table for an LLM later if needed
         if cursor.rowcount == 0:
             logger.info(f"Table {self.table} already exists")
             return query
