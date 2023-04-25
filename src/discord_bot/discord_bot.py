@@ -1,11 +1,11 @@
 import discord
-import aiohttp
 from os import getenv
+
+from utils import call_completion_api, call_parking_api, convert_schedule
 from discord_log import BotLog
 from discord.ext import commands
 
 # Remove these when you remove call_parking_api
-from re import sub
 
 # Replace 'your_bot_token' with your actual bot token
 TOKEN = getenv('DISCORD_TOKEN')
@@ -19,100 +19,6 @@ intents.members = True
 # Create bot instance
 bot = commands.Bot(command_prefix='$', intents=intents)
 
-async def call_completion_api(username, message, channel):
-    '''
-    Call the completion API to get the messages
-    :param username:
-    :param message:
-    :return:
-    '''
-    async with aiohttp.ClientSession() as session:
-        url = getenv("COMPLETION_API_URL") + '/completion'
-        api_key = getenv("COMPLETION_API_KEY")
-        try:
-            response = await fetch(session, url, api_key, username, message, channel)
-        except Exception as e:
-            logger.error(f"Error calling completion API: {e}")
-            return {'error': 'Error calling completion API'}
-        return response
-
-# TODO: REMOVE, ONLY NEEDED FOR DEBUG
-def make_pretty(query_results):
-    # Determine the maximum length for each column
-    column_widths = {}
-    data_line = ''
-    for entry in query_results:
-        print(f'entry: {entry}')
-        for key, value in entry.items():
-            if key == 'address':
-                continue
-            if key not in column_widths and 'Data above' not in str(value):
-                column_widths[key] = len(str(key))
-            if 'Data above' in str(value):
-                data_line = str(value)
-                continue
-            column_widths[key] = max(column_widths[key], len(str(value)))
-
-    # Create the header row
-    header = '| ' + ' | '.join([f"{key:<{column_widths[key]}}" for key in column_widths]) + ' |'
-    separator = '+-' + '-+-'.join(['-' * column_widths[key] for key in column_widths]) + '-+'
-
-    # Create the table rows
-    rows = []
-    for i, entry in enumerate(query_results):
-        # Check if this is the last row
-        if i == len(query_results) - 1:
-            # Append just the value of the last column
-            row = '\n' + data_line
-        else:
-            # Append the full row
-            try:
-                row = '| ' + ' | '.join([f"{entry[key]:<{column_widths[key]}}" for key in column_widths]) + ' |'
-            except Exception as e:
-                pass
-        rows.append(row)
-
-    # Combine the header, separator, and rows
-    table = '\n'.join([header, separator] + rows)
-    return '```\n' + table + '\n```'
-
-async def call_parking_api(username, endpoint, params=None, sql_query=None):
-    '''
-    Call the parking API to get the data
-    :param username:
-    :param message:
-    :param sql_query:
-    :param endpoint:
-    :return:
-    '''
-    async with aiohttp.ClientSession() as session:
-        url = f"{getenv('PARKING_API_URL')}/{endpoint}"
-        payload = {
-            "api_key": getenv("PARKING_API_KEY"),
-            "username": username,
-        }
-        if params:
-            for p in params:
-                payload[p] = params[p]
-        if sql_query:
-            payload['sql_query'] = sql_query
-        try:
-            response = await session.get(url, params=payload)
-        except Exception as e:
-            raise Exception(f"Error calling parking API: {e}")
-        if response.status == 200:
-            return make_pretty(await response.json())
-        else:
-            raise Exception(f"Error calling API. Status code: {response.status}, response: {response.text}")
-
-
-async def fetch(session, url, api_key, username, message, channel):
-    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    data = {'api_key': api_key, 'username': username, 'message': message, 'channel': channel}
-    async with session.post(url, headers=headers, data=data) as response:
-        return await response.json(content_type=None)
-
-
 @bot.event
 async def on_ready():
     logger.info('Bot is ready and connected.')
@@ -125,6 +31,20 @@ async def on_message(message):
     if message.content.lower().startswith('ping?'):
         logger.info(f'Ping? Pong! received from {message.author} in {message.channel}')
         await message.reply('pong!')
+        return
+
+    if bot.user in message.mentions:
+        if message.channel.category_id != 1099892029523247246:
+            await message.reply("Please use the 'ParkingSucks GPT Bot' categories for getting parking information.")
+            return
+
+    if 'convert-schedule' in message.channel.name:
+        logger.info(f'Converting schedule for {message.author} in {message.channel}')
+        converted_schedule = convert_schedule(message.content)
+
+        if not converted_schedule:
+            converted_schedule = 'Sorry, I could not convert that schedule. Please try again.'
+        await message.reply(converted_schedule)
         return
 
     if 'system' in message.channel.name:
@@ -141,21 +61,18 @@ async def on_message(message):
         await message.reply(await call_parking_api(str(message.author), endpoint_name, params=params))
         return
 
-    if bot.user in message.mentions:
-        if message.channel.category_id != 1099892029523247246:
-            await message.reply("Please use the 'ParkingSucks GPT Bot' categories for getting parking information.")
-            return
-        content = message.content.replace(f'<@!{bot.user.id}>', '', 1).lstrip()
-        if len(content) > 500:
-            await message.reply("Sorry, that message is too long. Try making your message shorter and asking more than one message to get the information you need.")
-            return
-        response = await call_completion_api(str(message.author), content, str(message.channel.name))
-        if 'error' in response:
-            await message.reply("Sorry, that didn't work")
-        else:
-            await message.reply(response)
-            # Get the system channel using discord.py
-            # system_channel = bot.get_channel(1096444199433408632)
+
+    content = message.content.replace(f'<@!{bot.user.id}>', '', 1).lstrip()
+    if len(content) > 500:
+        await message.reply("Sorry, that message is too long. Try making your message shorter and asking more than one message to get the information you need.")
+        return
+    response = await call_completion_api(str(message.author), content, str(message.channel.name))
+    if 'error' in response:
+        await message.reply("Sorry, that didn't work")
+    else:
+        await message.reply(response)
+        # Get the system channel using discord.py
+        # system_channel = bot.get_channel(1096444199433408632)
 
 # Run the bot
 bot.run(TOKEN)
