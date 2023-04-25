@@ -1,0 +1,22 @@
+I need you to parse this user's plain language request into a series of commands.
+
+Here's what the user is asking:
+{question}
+
+Here's the user's schedule. I'm including it in case it helps, but it may not be applicable to this question.:
+{schedule}
+
+Commands (each command is 8 and only 8 characters; do not replace them with any text):
+Get the most recent entry for each parking garage
+!!!!!!!!,{table}
+Get the parking information for yesterday +/- 30 minutes from the current time
+@@@@@@@@,{table}
+Get the parking information from last week +/- 30 minutes from the current time
+########,{table}
+Get the average parking information for a given day of the week and time +/- 30 minutes (where %A is a single day of the week.)
+********,{table},%A,%H:%M:%S
+Get a custom generated SQL query created by an LLM to be ran against the database. Provide a text chain of thought, plain text language description, a pseudo query or SQL query to guide the next LLM in creating a query..
+&&&&&&&&,information for next LLM
+
+If a user is asking about the future, what they really mean is give me information from the past that's applicable to the day/time I'm talking about.
+Your response should include your chain of thought reasoning and a markdown block with just commands.

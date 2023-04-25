@@ -1,46 +1,42 @@
-I have a question about parking. We're going to:
-1) Generate a SQL query to get information about parking that will answer my question
-2) Run the SQL query
-3) Use those results to get an answer to my question.
+I'm another large language model who has been assigned the task of gathering information about parking. I did not think these queries would give me the information I could use to answer the question, but I'm providing them as examples to help you understand the schema and how to access and return data.
 
-First, let's get the SQL query based on the schema provided. Use current date and other SQL functions to get all the information you need. Make sure the results are pre-formatted in a way that lets the large language model answer my question later
+Example getting current (most recent) information:
+    WITH latest_time AS (
+        SELECT name, MAX(time) AS most_recent_time
+        FROM {table}
+        GROUP BY name
+    )
+    SELECT CONCAT(t.fullness, '%') AS fullness, lt.name
+    FROM latest_time lt
+    JOIN {table} t ON lt.name = t.name AND lt.most_recent_time = t.time
+    UNION ALL
+    SELECT NULL AS fullness, CONCAT('Data above is current through the most recent time: ', MAX(lt.most_recent_time)) AS name
+    FROM latest_time lt;
 
-Example Question: "How full are the garages for my class that start at 9am on Monday's?"
-Here's a bad example:
-SELECT fullness AS percent_full FROM sjsu WHERE DAYOFWEEK(time) = 2 AND TIME(time) BETWEEN '09:00:00' AND '09:30:00'
-This is bad because it doesn't return the 'name' column, so later LLMs can't tell the user information about the 4 garages. It also has no limit on the rows returned; your version should have as few rows as possible.
+Example getting average for a given day of week and time of day:
+    SELECT name, CONCAT(CEILING(AVG(fullness)), '%') AS fullness
+    FROM {table}
+    WHERE DAYNAME(time) = '{day}'
+      AND TIME(time) BETWEEN ADDTIME('{time}', '-01:00:00') AND '{time}'
+    GROUP BY name
+    WITH ROLLUP
 
-Here's a good example:
-SELECT 
-  CONCAT('GarageName: ', name, ', Min: ', MIN(fullness), '%, Mean: ', ROUND(AVG(fullness), 2), '%, Max: ', MAX(fullness), '%, STDEV: ', ROUND(STD(fullness), 2), '%') AS parking_info 
-FROM 
-  sjsu 
-WHERE 
-  DAYOFWEEK(time) = 2 AND TIME(time) BETWEEN '09:00:00' AND '09:01:00' 
-GROUP BY 
-  name;
-This is a good because it returns all of the possible information needed to answer the question about each garage in an easy to read format, without a lot of filler, like this:
-Data for Tuesday's at 9am.
-GarageName: North Garage , Min: 58%, Mean: 58.00%, Max: 58%, STDEV: 0.00%
-GarageName: South Campus Garage , Min: 5%, Mean: 5.00%, Max: 5%, STDEV: 0.00%
-GarageName: South Garage , Min: 83%, Mean: 84.00%, Max: 85%, STDEV: 1.00%
-GarageName: West Garage , Min: 61%, Mean: 61.50%, Max: 62%, STDEV: 0.50%
+    UNION ALL
 
+    SELECT CONCAT('Data above is average fullness for ', '{day}', ' at ', '{time}') AS name, CONCAT(CEILING(AVG(fullness)), '%') AS fullness
+    FROM {table}
+    WHERE DAYNAME(time) = '{day}'
+      AND TIME(time) BETWEEN ADDTIME('{time}', '-01:00:00') AND '{time}'
+Note: queries must UNION all a data line which starts with "Data above" and gives the time period the data is good through.
+
+Current date: {datetime}
 Your task:
  - Use chain of thought reasoning to write out the steps needed to solve this problem
- - Write out what information you need about each garage
- - Write out what time period you need to request information about
-   - If the user is asking about the future, retrieve historical information for the same time period. For example if the ask about the parking tomorrow, look for information from 6 days ago and earlier for that day. Never use WHERE time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 1 HOUR) or similar; you can't get data from the future.
-   - You should use at least +/- 15 minutes from what the user says. For example if they say between 10am-11am, your query should be between 945am and 1115am. 
-   - CONCAT the time-period into the header show
- - Write out a sample output with a title row, header row and 1 sample
+ - Work out what information you need about each garage
+ - Work out what time period you need to request information about. Your time periods should be no less than 30 minutes and never in the future: you only have access to historical datta
+ - Use the !!!!!!!! keyword followed by the SQL query to give me the SQL query to run.
 
-Then, when you're ready to generate the SQL query, display it like this with no markdown and with no text after the SQL query:
-
-!!!!!!!!
-SELECT * FROM...
-
-Here's my question
+Here's my question I need help with:
 {question}
 
-Start your task.
+Start your task...
