@@ -1,12 +1,13 @@
 import mysql.connector
 from os import getenv
 from garage import Garage
+from shuttle_scrapy import ShuttleStatus
 from scraper_log import BotLog
 
 # Instantiating a new logger object with the name 'mariadb'
 logger = BotLog('mariadb')
 
-class Config:
+class Parking:
     """
     This class handles the configuration for the MySQL database. It has methods to create a table, load the latest data
     and add new data to the table.
@@ -29,39 +30,8 @@ class Config:
         # Set the table name
         self.table = table_name
 
-        # Create the table if it doesn't already exist
-        self.create_table()
-
         # Not needed in current config, but low effort and could be useful in the future
         self.latest = self.load_latest()
-
-    def create_table(self) -> str:
-        """
-        This method creates the table in the MySQL server if it doesn't already exist.
-        """
-        cursor = self.conn.cursor()
-        query = """
-            CREATE TABLE IF NOT EXISTS %s (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `name` TEXT NOT NULL,
-                `address` TEXT NOT NULL,
-                `fullness` INT NOT NULL,
-                `time` DATETIME NOT NULL
-            )
-        """
-        cursor.execute(query % self.table)
-        self.conn.commit()
-        cursor.close()
-
-        # To programmatically get the schema of the table for an LLM later if needed
-        if cursor.rowcount == 0:
-            logger.info(f"Table {self.table} already exists")
-            return query
-        else:
-            logger.info(f"Created table {self.table}")
-            return "Created table"
-        # Prompt: I want this to return a string of the query if the table exists and 'Created table' if it does not exist
-
     def load_latest(self) -> list:
         """
         This method loads the latest data from the MySQL server and returns it as a list of Garage objects.
@@ -123,5 +93,57 @@ class Config:
         """
         self.conn.close()
 
+class Shuttles:
+    """
+    This class handles the configuration for the MySQL database. It has methods to create a table, load the latest data
+    and add new data to the table.
+    """
+    def __init__(self, table_name) -> None:
+        """
+        The constructor for the Config class. It initializes the connection to the MySQL server and sets the table name.
+        It then calls the create_table and load_latest methods.
+        :param table_name: (str) The name of the table to be used in the MySQL server.
+        """
+        # Try to connect to the MySQL server without an SSH tunnel
+        self.conn = mysql.connector.connect(
+            host=getenv("DB_HOST"),
+            user=getenv("DB_USER"),
+            password=getenv("DB_PASS"),
+            database=getenv("DB_NAME"),
+            port=getenv("DB_PORT")
+            )
+
+        # Set the table name
+        self.table = table_name
+
+    def insert_data(self, stop_name, time_to_departure, updated_at):
+        cursor = self.conn.cursor()
+        insert_query = f"INSERT INTO `{self.table}` (stop_name, time_to_departure, updated_at) VALUES (%s, %s, %s)"
+        cursor.execute(insert_query, (stop_name, time_to_departure, updated_at))
+        self.conn.commit()
+        cursor.close()
+
+    def get_latest_shuttle_statuses(self):
+        cursor = self.conn.cursor()
+        query = f"""
+            SELECT stop_name, time_to_departure, updated_at
+            FROM (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY stop_name ORDER BY updated_at DESC) AS row_num
+                FROM `{self.table}`
+            ) AS temp
+            WHERE row_num = 1
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        cursor.close()
+
+        shuttle_statuses = [ShuttleStatus(stop_name=row[0], time_to_departure=row[1], updated_at=row[2]) for row in
+                            rows]
+        return shuttle_statuses
+
+garage_db = Parking('sjsu')
+shuttles_db = Shuttles('sjsu-shuttles')
+
 if __name__ == '__main__':
-    config = Config('test')
+    config = Parking('test')
+

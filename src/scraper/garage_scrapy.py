@@ -3,9 +3,11 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from agent_picker import random_ua
 from garage import Garage
-from mariadb import Config
+from mariadb import garage_db, shuttles_db
 from time import sleep
 from scraper_log import BotLog
+from threading import Thread
+from shuttle_scrapy import monitor_shuttle_statuses
 
 logger = BotLog('garage_scrapy')
 
@@ -57,14 +59,23 @@ def get_garage_info(garage_url):
 
 
 if __name__ == '__main__':
-    url = "https://sjsuparkingstatus.sjsu.edu/"
-    garage_db = Config('sjsu')
-    number_new = 0
-    for garage in get_garage_info(url):
-        logger.info(f'New garage: {garage}')
-        added_new = garage_db.new(garage)
-        number_new += 1 if added_new else 0
-    logger.info(f'Scraped {number_new} new garages.')
-    # Wait for 5 minutes before running again
-    logger.info('Waiting 5 minutes before running again...')
-    sleep(60 * 5)
+    # launch the shuttle scraper in a separate thread to be monitored within the loop and restarted if it crashes
+    shuttle_thread = Thread(target=monitor_shuttle_statuses, args=(shuttles_db,), daemon=True)
+    shuttle_thread.start()
+    while True:
+        url = "https://sjsuparkingstatus.sjsu.edu/"
+        number_new = 0
+        for garage in get_garage_info(url):
+            logger.info(f'New garage: {garage}')
+            added_new = garage_db.new(garage)
+            number_new += 1 if added_new else 0
+        logger.info(f'Scraped {number_new} new garages.')
+        # Wait for 5 minutes before running again
+        logger.info('Waiting 5 minutes before running again...')
+
+        # Check on the shuttle thread and restart it if it needs to be.
+        if not shuttle_thread.is_alive():
+            logger.info('Shuttle scraper thread has crashed. Restarting it...')
+            shuttle_thread = Thread(target=monitor_shuttle_statuses, args=(shuttles_db,), daemon=True)
+            shuttle_thread.start()
+        sleep(60 * 5)
