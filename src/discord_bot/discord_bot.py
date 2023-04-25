@@ -146,7 +146,7 @@ async def on_message(message):
             await message.reply("Please use the 'ParkingSucks GPT Bot' categories for getting parking information.")
             return
         content = message.content.replace(f'<@!{bot.user.id}>', '', 1).lstrip()
-        if len(content) > 250:
+        if len(content) > 500:
             await message.reply("Sorry, that message is too long. Try making your message shorter and asking more than one message to get the information you need.")
             return
         response = await call_completion_api(str(message.author), content, str(message.channel.name))

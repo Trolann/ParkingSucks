@@ -38,12 +38,12 @@ async def complete_moderation(query: str) -> bool:
 async def complete_gpt_moderation(query, username) -> bool:
     response = chat(query.to_messages()).content
     await archive_completion(query.to_messages(), response)
-    logger.info(f'Got response: {response} (query: {query})')
+    logger.info(f'Got response: {response}')
     if '!!!!!!!!' in response:
         logger.info(f'Found a safe query')
         return True
     if '@@@@@@@@' in response:
-        logger.critical(f"UNSAFE QUERY DETECTED from {username}: {query}")
+        logger.critical(f"UNSAFE QUERY DETECTED from {username}")
     else:
         logger.error(f'Unable to determine safety of query: {query}')
     return False

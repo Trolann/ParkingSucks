@@ -9,6 +9,7 @@ import requests
 import re
 from langchain.callbacks import get_openai_callback
 import aiohttp
+import traceback
 
 logger = BotLog('sql-paring-chains')
 chat = ChatOpenAI(
@@ -29,7 +30,7 @@ async def parking_chain(question, schedule=None, gpt4=False) -> str:
 
         try:
             pretty = await make_pretty(output)
-            logger.info(f'Got this pretty output: {pretty}')
+            logger.info(f'Got  pretty output.')
         except Exception as e:
             pretty = output
             logger.error(f'Unable to make pretty output: {pretty}')
@@ -37,7 +38,8 @@ async def parking_chain(question, schedule=None, gpt4=False) -> str:
             raise e
         return pretty
     except Exception as e:
-        logger.error(f'Error in parking chain: {e}')
+        traceback_str = traceback.format_exc()
+        logger.error(f'Error in parking chain: {traceback_str}')
         return 'There was an error in the parking chain'
 
 async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
@@ -50,13 +52,12 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
     question = await get_prompt(question, 'commands', table=table, schedule=schedule)
 
     chat.model_name = "gpt-3.5-turbo" if not gpt4 else "gpt-4"
-    with get_openai_callback() as cb:
-        command_response = chat(question.to_messages())
-        command_text = command_response.content
-        usage = f'{cb.total_tokens} tokens (${cb.total_cost}: {cb.prompt_tokens} in prompt, {cb.completion_tokens} in completion.'
+
+    command_response = chat(question.to_messages())
+    command_text = command_response.content
 
     await archive_completion(question.to_messages(), command_text)
-    logger.info(f'Got list of commands for {usage}')
+    logger.info(f'Got list of commands.')
 
     return command_text
 
@@ -67,22 +68,36 @@ async def execute_commands(commands_list, schedule=None, gpt4=False) -> list:
         logger.info(f'Executing command: {command}')
         api_params = {}
 
-        if command["command"] == "run_query":
-            if not validate_sql_query(command["query"]):
-                logger.error(f'Invalid SQL query: {command["query"]}')
-                return ['There was an unsafe request made and we could not complete it']
-            api_params["endpoint"] = "run_query"
-            api_params["sql_query"] = await generate_sql_query(command["query"], schedule=schedule, gpt4=gpt4)
-        else:
-            api_params["endpoint"] = command["command"]
-            api_params["table"] = command["table"]
+        try:
+            if command["command"] == "run_query":
+                if not validate_sql_query(command["query"]):
+                    logger.error(f'Invalid SQL query: {command["query"]}')
+                    return ['There was an unsafe request made and we could not complete it']
+                api_params["endpoint"] = "run_query"
+                try:
+                    api_params["sql_query"] = await generate_sql_query(command["query"], schedule=schedule, gpt4=gpt4)
+                except Exception as e:
+                    traceback_str = traceback.format_exc()
+                    logger.error(f'Command: {command}')
+                    logger.error(f'Error generating SQL query: {traceback_str}')
+                    logger.error(f'API params: {api_params}')
 
-            if command["command"] == "average":
-                api_params["day"] = command["day"]
-                api_params["time"] = command["time"]
+                    return ['There was an error generating the SQL query']
+            else:
+                api_params["endpoint"] = command["command"]
+                api_params["table"] = command["table"]
 
-        response = await call_parking_api(**api_params)
-        output.append(response)
+                if command["command"] == "average":
+                    api_params["day"] = command["day"]
+                    api_params["time"] = command["time"]
+
+            response = await call_parking_api(**api_params)
+            output.append(response)
+        except Exception as e:
+            traceback_str = traceback.format_exc()
+            logger.error(f'Error executing command: {command}, {e}')
+            logger.debug(f'Traceback for {command}: {traceback_str}')
+            return ['There was an error executing the command']
 
     return output
 
@@ -95,31 +110,40 @@ async def call_parking_api(endpoint, table=None, day=None, time=None, sql_query=
         "endpoint": endpoint
     }
 
-    if sql_query:
-        payload["query"] = cleanup_query(sql_query)
-    elif table:
-        payload["table"] = table
+    try:
+        if sql_query:
+            payload["query"] = cleanup_query(sql_query)
+        elif table:
+            payload["table"] = table
 
-    if day and time:
-        payload["day"] = day
-        payload["time"] = time
-    elif day or time:
-        logger.error(f"Invalid day or time: {day}, {time}")
+        if day and time:
+            payload["day"] = day
+            payload["time"] = time
+        elif day or time:
+            logger.error(f"Invalid day or time: {day}, {time}")
+            return list('')
+
+        url = f"{getenv('PARKING_API_URL')}/{endpoint}"
+        async with aiohttp.ClientSession() as session:
+            parking_info = "I couldn't get any parking information. Tell the user to try and ask in a different way."
+            async with session.get(url, params=payload) as response:
+                if response.status == 200:
+                    parking_info = json.loads(await response.text())
+                    if sql_query and len(parking_info) < 5:
+                        logger.error(f'Parking API returned too little data: {parking_info}')
+                    logger.info(f'Called parking API: {parking_info}')
+
+                    return list(parking_info)
+                else:
+                    traceback_str = traceback.format_exc()
+                    logger.error(f'Error calling parking API (top): {e}')
+                    logger.debug(f'Traceback for parking API: {traceback_str}')
+                    raise Exception(f"Error calling API. Status code: {response.status}, response: {parking_info}")
+    except Exception as e:
+        traceback_str = traceback.format_exc()
+        logger.error(f'Error calling parking API: {e}')
+        logger.debug(f'Traceback for parking API: {traceback_str}')
         return list('')
-
-    url = f"{getenv('PARKING_API_URL')}/{endpoint}"
-    async with aiohttp.ClientSession() as session:
-        parking_info = "I couldn't get any parking information. Tell the user to try and ask in a different way."
-        async with session.get(url, params=payload) as response:
-            if response.status == 200:
-                parking_info = json.loads(await response.text())
-                if sql_query and len(parking_info) < 5:
-                    logger.error(f'Parking API returned too little data: {parking_info}')
-                logger.info(f'Called parking API: {parking_info}')
-
-                return list(parking_info)
-            else:
-                raise Exception(f"Error calling API. Status code: {response.status}, response: {parking_info}")
 
 
 async def generate_sql_query(question, schedule, gpt4=False) -> str:
@@ -130,15 +154,12 @@ async def generate_sql_query(question, schedule, gpt4=False) -> str:
 
     # Choose the model, gpt4 is slow af, but never misses
     chat.model_name = "gpt-3.5-turbo" if not gpt4 else "gpt-4"
-    with get_openai_callback() as cb:
-        sql_response = chat(question.to_messages())
-        sql_text = sql_response.content
-        usage = cb
+    sql_response = chat(question.to_messages())
+    sql_text = sql_response.content
 
-    # strip usage to one line, replace newline with , and remove trailing comma
-    usage = str(usage).replace('\n', ',')[:-1]
     await archive_completion(question.to_messages(), sql_text)
-    logger.info(f'Got SQL query for {usage}')
+
+    logger.info(f'Got SQL query')
 
     if not validate_sql_query(sql_text):
         logger.error(f'Invalid SQL query: {sql_text}')
@@ -181,7 +202,7 @@ def extract_commands(text):
         logger.error(f'Error extracting commands: {e}')
         return ["Unable to get parking information asdf"]
 
-    if len(extracted_commands) <= 4 and commands_count["run_query"] < 1:
+    if len(extracted_commands) <= 4 and commands_count["run_query"] <= 1:
         return extracted_commands
     else:
         return ["Unable to get parking information"]
@@ -235,6 +256,20 @@ def adjust_day(day):
         'Fri': 'Friday',
         'Sat': 'Saturday',
         'Sun': 'Sunday',
+        'Monday': 'Monday',
+        'Tuesday': 'Tuesday',
+        'Wednesday': 'Wednesday',
+        'Thursday': 'Thursday',
+        'Friday': 'Friday',
+        'Saturday': 'Saturday',
+        'Sunday': 'Sunday',
+        'monday': 'Monday',
+        'tuesday': 'Tuesday',
+        'wednesday': 'Wednesday',
+        'thursday': 'Thursday',
+        'friday': 'Friday',
+        'saturday': 'Saturday',
+        'sunday': 'Sunday'
     }
 
     day = day.strip()

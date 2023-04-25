@@ -2,6 +2,7 @@ import json
 from completion_log import BotLog
 from datetime import datetime
 from aiofile import AIOFile
+import traceback
 
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -71,6 +72,8 @@ async def determine_column_widths(query_results):
                     continue
                 column_widths[key] = max(column_widths[key], len(str(value)))
         except Exception as e:
+            traceback_str = traceback.format_exc()
+            logger.info(f'Traceback: {traceback_str}')
             logger.info(f'Error: {e}')
             continue
     return column_widths, data_line

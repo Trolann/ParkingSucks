@@ -8,3 +8,4 @@ mysql-connector-python==8.0.28
 cryptography==39.0.1
 aiofile==3.8.5
 aiomysql==0.1.1
+tiktoken==0.3.3
