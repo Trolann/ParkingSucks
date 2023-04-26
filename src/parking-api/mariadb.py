@@ -48,21 +48,33 @@ class Config:
                 return None
         return cursor
 
-    def get_latest(self, table):
+    def get_latest(self, table, shuttle=False):
         cursor = self.get_cursor()
         cursor.execute(f'''
             WITH latest_time AS (
                 SELECT name, MAX(time) AS most_recent_time
-                FROM {table}
+                FROM `{table}`
                 GROUP BY name
             )
             SELECT CONCAT(t.fullness, '%') AS fullness, lt.name
             FROM latest_time lt
-            JOIN {table} t ON lt.name = t.name AND lt.most_recent_time = t.time
+            JOIN `{table}` t ON lt.name = t.name AND lt.most_recent_time = t.time
             UNION ALL
             SELECT NULL AS fullness, CONCAT('Data above is current through the most recent time: ', MAX(lt.most_recent_time)) AS name
             FROM latest_time lt;
-        ''')
+        ''' if not shuttle else f'''
+            WITH latest_time AS (
+                SELECT stop_name, MAX(updated_at) AS most_recent_time
+                FROM `{table}`
+                GROUP BY stop_name
+            )
+            SELECT CONCAT(t.time_to_departure, ' minutes') AS time_to_departure, lt.stop_name
+            FROM latest_time lt
+            JOIN `{table}` t ON lt.stop_name = t.stop_name AND lt.most_recent_time = t.updated_at
+            UNION ALL
+            SELECT NULL AS time_to_departure, CONCAT('Data above is current through the most recent time: ', MAX(lt.most_recent_time)) AS stop_name
+            FROM latest_time lt;
+            ''')
         try:
             result = cursor.fetchall()
             print(result)
@@ -73,12 +85,12 @@ class Config:
         logger.info(f'Found {num_results} results for latest entry in {table}')
         return result
 
-    def get_yesterday(self, table):
+    def get_yesterday(self, table, shuttle=False):
         cursor = self.get_cursor()
         time_last_week = datetime.now() - timedelta(weeks=1)
         query = f'''
             SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
-            FROM {table}
+            FROM `{table}`
             WHERE time >= DATE_ADD(NOW(), INTERVAL -1 DAY) - INTERVAL 30 MINUTE
             AND time < DATE_ADD(NOW(), INTERVAL -1 DAY) + INTERVAL 30 MINUTE
             GROUP BY name
@@ -89,7 +101,19 @@ class Config:
                   ' to ', 
                   DATE_ADD(NOW(), INTERVAL -1 DAY) + INTERVAL 30 MINUTE
                  ) AS message, '' AS name;
-
+        ''' if not shuttle else f'''
+            SELECT CONCAT(CEILING(AVG(time_to_departure)), ' minutes') AS avg_time_to_departure, stop_name
+            FROM `{table}`
+            WHERE updated_at >= DATE_ADD(NOW(), INTERVAL -1 DAY) - INTERVAL 30 MINUTE
+            AND updated_at < DATE_ADD(NOW(), INTERVAL -1 DAY) + INTERVAL 30 MINUTE
+            GROUP BY stop_name
+            UNION ALL
+            
+            SELECT CONCAT('Data above is for ',
+                  DATE_ADD(NOW(), INTERVAL -1 DAY) - INTERVAL 30 MINUTE,
+                  ' to ',
+                  DATE_ADD(NOW(), INTERVAL -1 DAY) + INTERVAL 30 MINUTE
+                 ) AS message, '' AS stop_name;
         '''
         cursor.execute(query)
         try:
@@ -100,12 +124,12 @@ class Config:
         logger.info(f'Found {len(results)} results for last week in {table}')
         return results
 
-    def get_last_week(self, table):
+    def get_last_week(self, table, shuttle=False):
         cursor = self.get_cursor()
 
         query = f'''
             SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
-            FROM {table}
+            FROM `{table}`
             WHERE time >= DATE_ADD(NOW(), INTERVAL -168 HOUR) - INTERVAL 30 MINUTE
             AND time < DATE_ADD(NOW(), INTERVAL -168 HOUR)
             GROUP BY name
@@ -116,7 +140,20 @@ class Config:
                   ' to ', 
                   DATE_ADD(NOW(), INTERVAL -168 HOUR)
                  ) AS message, '' AS name;
-'''
+        ''' if not shuttle else f'''
+            SELECT CONCAT(CEILING(AVG(time_to_departure)), ' minutes') AS avg_time_to_departure, stop_name
+            FROM `{table}`
+            WHERE updated_at >= DATE_ADD(NOW(), INTERVAL -168 HOUR) - INTERVAL 30 MINUTE
+            AND updated_at < DATE_ADD(NOW(), INTERVAL -168 HOUR)
+            GROUP BY stop_name
+            UNION ALL
+            
+            SELECT CONCAT('Data above is for ', 
+                  DATE_ADD(DATE_ADD(NOW(), INTERVAL -168 HOUR), INTERVAL -30 MINUTE),
+                  ' to ', 
+                  DATE_ADD(NOW(), INTERVAL -168 HOUR)
+                 ) AS message, '' AS stop_name;
+        '''
         cursor.execute(query)
         try:
             results = cursor.fetchall()
@@ -127,11 +164,11 @@ class Config:
         logger.info(f'Found {len(results)} results for yesterday in {table}')
         return results
 
-    def get_average(self, table, day, time):
+    def get_average(self, table, day, time, shuttle=False):
         cursor = self.get_cursor()
         query = f"""
             SELECT name, CONCAT(CEILING(AVG(fullness)), '%') AS fullness
-            FROM {table}
+            FROM `{table}`
             WHERE DAYNAME(time) = '{day}'
               AND TIME(time) BETWEEN ADDTIME('{time}', '-01:00:00') AND '{time}'
             GROUP BY name
@@ -140,10 +177,24 @@ class Config:
             UNION ALL
             
             SELECT CONCAT('Data above is average fullness for ', '{day}', ' at ', '{time}') AS name, CONCAT(CEILING(AVG(fullness)), '%') AS fullness
-            FROM {table}
+            FROM `{table}`
             WHERE DAYNAME(time) = '{day}'
               AND TIME(time) BETWEEN ADDTIME('{time}', '-01:00:00') AND '{time}'
 
+        """ if not shuttle else f"""
+            SELECT stop_name, CONCAT(CEILING(AVG(time_to_departure)), ' minutes') AS average_time_to_departure
+            FROM `{table}`
+            WHERE DAYNAME(updated_at) = '{day}'
+            AND TIME(updated_at) BETWEEN ADDTIME('{time}', '-01:00:00') AND '{time}'
+            GROUP BY stop_name
+            WITH ROLLUP
+            
+            UNION ALL
+            
+            SELECT CONCAT('Data above is average time to departure for ', '{day}', ' at ', '{time}') AS stop_name, CONCAT(CEILING(AVG(time_to_departure)), ' minutes') AS average_time_to_departure
+            FROM `{table}`
+            WHERE DAYNAME(updated_at) = '{day}'
+            AND TIME(updated_at) BETWEEN ADDTIME('{time}', '-01:00:00') AND '{time}'
         """
         cursor.execute(query)
         try:

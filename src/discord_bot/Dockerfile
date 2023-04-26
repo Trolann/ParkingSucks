@@ -17,4 +17,4 @@ RUN mkdir /app/logs
 COPY . .
 
 # Run the bot
-CMD ["python", "discord_bot.py"]
+CMD ["python", "api.py"]

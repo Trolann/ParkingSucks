@@ -31,8 +31,9 @@ def get_latest():
 
     logger.info(f'Got API request for latest data from {request.remote_addr}')
     table = request.args.get('table')
+    shuttle = request.args.get('shuttle')
     try:
-        result = db.get_latest(table)
+        result = db.get_latest(table, shuttle=True if shuttle else False)
     except Exception as e:
         logger.error(f'Error getting latest data: {e}')
         return jsonify({"error": f"Error getting latest data"}), 500
@@ -49,8 +50,9 @@ def get_yesterday():
 
     logger.info(f'Got API request for latest data from {request.remote_addr}')
     table = request.args.get('table')
+    shuttle = request.args.get('shuttle')
     try:
-        results = db.get_yesterday(table)
+        results = db.get_yesterday(table, shuttle=True if shuttle else False)
     except Exception as e:
         logger.error(f'Error getting latest data: {e}')
         return jsonify({"error": f"Error getting yesterday's data"}), 500
@@ -67,8 +69,9 @@ def get_last_week():
         pass
     logger.info(f'Got API request for yesterday\'s data from {request.remote_addr}')
     table = request.args.get('table')
+    shuttle = request.args.get('shuttle')
     try:
-        results = db.get_last_week(table)
+        results = db.get_last_week(table, shuttle=True if shuttle else False)
     except Exception as e:
         logger.error(f'Error getting latest data: {e}')
         return jsonify({"error": f"Error getting latest data"}), 500
@@ -88,10 +91,11 @@ def get_average():
     table = request.args.get('table')
     day = request.args.get('day')
     time = request.args.get('time')
+    shuttle = request.args.get('shuttle')
     # convert time to datetime
     time = datetime.strptime(time, '%H:%M:%S').time()
     try:
-        results = db.get_average(table, day, time)
+        results = db.get_average(table, day, time, shuttle=True if shuttle else False)
     except Exception as e:
         logger.error(f'Error getting average fullness: {e}')
         return jsonify({"error": f"Error getting average fullness"}), 500
@@ -108,6 +112,7 @@ def run_query():
     logger.info(f'Got API request to run query {request.remote_addr}')
     logger.info(f'Query: {request.args.get("query")}')
     sql_query = request.args.get('query')
+    shuttle = request.args.get('shuttle')
     # Run query
     try:
         results = db.run_query(sql_query)

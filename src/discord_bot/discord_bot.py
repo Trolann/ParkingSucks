@@ -1,6 +1,5 @@
 import discord
 from os import getenv
-
 from utils import call_completion_api, call_parking_api, convert_schedule
 from discord_log import BotLog
 from discord.ext import commands
@@ -74,8 +73,13 @@ async def on_message(message):
         # Get the system channel using discord.py
         # system_channel = bot.get_channel(1096444199433408632)
 
-# Run the bot
-bot.run(TOKEN)
+async def run_bot():
+    DISCORD_TOKEN = getenv('DISCORD_TOKEN')
+    await bot.start(DISCORD_TOKEN)
+
+if __name__ == '__main__':
+    import asyncio
+    asyncio.run(run_bot())
 
 # Prompt 1:
 # Create a python discord bot which:
