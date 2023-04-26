@@ -9,6 +9,7 @@ COPY requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install newrelic
 
 # Create a directory for logs inside the container
 RUN mkdir /app/logs

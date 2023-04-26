@@ -38,5 +38,6 @@ COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install certifi
+RUN pip install newrelic
 
 CMD [ "python", "garage_scrapy.py" ]

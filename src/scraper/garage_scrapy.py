@@ -8,10 +8,13 @@ from time import sleep
 from scraper_log import BotLog
 from threading import Thread
 from shuttle_scrapy import monitor_shuttle_statuses
+import newrelic.agent
 
+newrelic.agent.initialize('/app/newrelic.ini')
 logger = BotLog('garage_scrapy')
 
 
+@newrelic.agent.background_task()
 def get_site(site_url):
     """
     This function takes in a url and makes a GET request to the URL using a random user agent
@@ -23,6 +26,7 @@ def get_site(site_url):
     return page.content.decode('utf-8')
 
 
+@newrelic.agent.background_task()
 def get_garage_info(garage_url):
     """
     This function takes in a garage url and extracts the garage information from the site

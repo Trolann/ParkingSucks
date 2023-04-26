@@ -3,7 +3,7 @@ import aiomysql
 from os import getenv
 from datetime import datetime, timedelta
 from cryptography.fernet import Fernet
-
+import newrelic.agent
 from completion_log import BotLog
 
 # Instantiating a new logger object with the name 'mariadb'
@@ -20,6 +20,7 @@ class Config:
         self.loop.run_until_complete(self.retry_connection())
         self.loop.create_task(self.cleanup_scheduler(CLEANUP_SLEEP))
 
+    @newrelic.agent.background_task()
     async def retry_connection(self, max_retries=3, delay=5):
         retries = 0
         while retries < max_retries:
@@ -41,6 +42,7 @@ class Config:
 
         logger.error(f'Failed to connect to MariaDB host {getenv("USER_DB_HOST")} after {max_retries} retries')
 
+    @newrelic.agent.background_task()
     async def write_schedule(self, username, schedule):
         username_encrypted = self.fernet.encrypt(username.encode()).decode()
         schedule_encrypted = self.fernet.encrypt(schedule.encode()).decode()
@@ -59,6 +61,7 @@ class Config:
             except Exception as e:
                 logger.error(f"Failed to insert or update schedule for user '{username}': {e}")
 
+    @newrelic.agent.background_task()
     async def get_schedule(self, username):
         username_encrypted = self.fernet.encrypt(username.encode()).decode()
         async with self.conn.cursor() as cursor:
@@ -86,6 +89,7 @@ class Config:
 
         return schedule if schedule else 'No schedule for the user. This might be their first time here.'
 
+    @newrelic.agent.background_task()
     async def delete_schedule(self, username_encrypted):
         async with self.conn.cursor() as cursor:
             query = f"""
@@ -99,6 +103,7 @@ class Config:
             except Exception as e:
                 logger.error(f"Failed to delete schedule: {e}")
 
+    @newrelic.agent.background_task()
     async def cleanup_old_records(self):
         async with self.conn.cursor() as cursor:
             query = f"""

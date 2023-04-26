@@ -3,6 +3,7 @@ from completion_log import BotLog
 from datetime import datetime
 from aiofile import AIOFile
 import traceback
+import newrelic.agent
 
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -12,6 +13,7 @@ from langchain.prompts import (
 
 logger = BotLog('completion-manager')
 
+@newrelic.agent.background_task()
 async def get_prompt(question, prompt_type, **kwargs):
     '''
     Loads prompt template from file to allow for rapid changing of prompts.
@@ -38,6 +40,7 @@ async def get_prompt(question, prompt_type, **kwargs):
     # Pass keyword arguments to the format_prompt method
     return chat_prompt.format_prompt(question=question, **kwargs)
 
+@newrelic.agent.background_task()
 async def archive_completion(prompt_messages, response):
     '''
     Save a simple text copy of every completion, because they're expensive and we'll probably want them again
@@ -94,6 +97,7 @@ async def create_table(query_results):
     table = '\n'.join([header, separator] + rows)
     return '```\n' + table + '\n' + data_line + '\n```'  # Add the data line below the table
 
+@newrelic.agent.background_task()
 async def make_pretty(query_results_list):
     tables = []
     for query_results in query_results_list:

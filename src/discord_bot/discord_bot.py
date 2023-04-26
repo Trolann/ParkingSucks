@@ -3,7 +3,9 @@ from os import getenv
 from utils import call_completion_api, call_parking_api, convert_schedule
 from discord_log import BotLog
 from discord.ext import commands
+import newrelic.agent
 
+newrelic.agent.initialize('/app/newrelic.ini')
 # Remove these when you remove call_parking_api
 
 # Replace 'your_bot_token' with your actual bot token
@@ -21,6 +23,8 @@ bot = commands.Bot(command_prefix='$', intents=intents)
 @bot.event
 async def on_ready():
     logger.info('Bot is ready and connected.')
+
+@newrelic.agent.background_task()
 @bot.event
 async def on_message(message):
     # Ignore messages from the bot itself

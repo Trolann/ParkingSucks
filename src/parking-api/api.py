@@ -3,12 +3,15 @@ from api_log import BotLog
 import os
 from mariadb import Config
 from datetime import datetime
+import newrelic.agent
+
+newrelic.agent.initialize('/app/newrelic.ini')
 
 app = Quart(__name__)
 logger = BotLog('api')
 db = Config()
 
-
+@newrelic.agent.background_task()
 def valid_api_key(reqest: request) -> bool:
     """
     Check if the API key is valid.
@@ -19,7 +22,7 @@ def valid_api_key(reqest: request) -> bool:
         logger.error(f'Given API key: {api_key}')
         return False
     return True
-
+@newrelic.agent.background_task()
 @app.route('/latest')
 def get_latest():
     """
@@ -38,7 +41,7 @@ def get_latest():
         logger.error(f'Error getting latest data: {e}')
         return jsonify({"error": f"Error getting latest data"}), 500
     return jsonify(result)
-
+@newrelic.agent.background_task()
 @app.route('/yesterday')
 def get_yesterday():
     """
@@ -58,7 +61,7 @@ def get_yesterday():
         return jsonify({"error": f"Error getting yesterday's data"}), 500
 
     return jsonify(results)
-
+@newrelic.agent.background_task()
 @app.route('/lastweek')
 def get_last_week():
     """
@@ -78,6 +81,7 @@ def get_last_week():
     return jsonify(results)
 
 # TODO: Implement semesters
+@newrelic.agent.background_task()
 @app.route('/average')
 def get_average():
     """
@@ -100,7 +104,7 @@ def get_average():
         logger.error(f'Error getting average fullness: {e}')
         return jsonify({"error": f"Error getting average fullness"}), 500
     return jsonify(results)
-
+@newrelic.agent.background_task()
 @app.route('/query')
 def run_query():
     """

@@ -7,7 +7,7 @@ from utils import get_prompt, archive_completion, make_pretty
 from langchain.chat_models import ChatOpenAI
 import requests
 import re
-from langchain.callbacks import get_openai_callback
+import newrelic.agent
 import aiohttp
 import traceback
 
@@ -17,6 +17,7 @@ chat = ChatOpenAI(
     temperature=0.7
     )
 
+@newrelic.agent.background_task()
 async def parking_chain(question, schedule=None, gpt4=False) -> str:
     try:
 
@@ -42,6 +43,7 @@ async def parking_chain(question, schedule=None, gpt4=False) -> str:
         logger.error(f'Error in parking chain: {traceback_str}')
         return 'There was an error in the parking chain'
 
+@newrelic.agent.background_task()
 async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
     logger.info(f'Getting commands query for question: {question}')
     if gpt4:
@@ -61,6 +63,7 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
 
     return command_text
 
+@newrelic.agent.background_task()
 async def execute_commands(commands_list, schedule=None, gpt4=False) -> list:
     output = []
 
@@ -101,6 +104,7 @@ async def execute_commands(commands_list, schedule=None, gpt4=False) -> list:
 
     return output
 
+@newrelic.agent.background_task()
 async def call_parking_api(endpoint, table=None, day=None, time=None, sql_query=None) -> list:
     if sql_query and endpoint != 'query':
         logger.error(f"Invalid endpoint: {endpoint} for query: {sql_query}")
@@ -146,6 +150,7 @@ async def call_parking_api(endpoint, table=None, day=None, time=None, sql_query=
         return list('')
 
 
+@newrelic.agent.background_task()
 async def generate_sql_query(question, schedule, gpt4=False) -> str:
     logger.info(f'Generating a SQL query')
 
@@ -168,6 +173,7 @@ async def generate_sql_query(question, schedule, gpt4=False) -> str:
     # Basic text string checks
     return sql_text
 
+@newrelic.agent.background_task()
 def extract_commands(text):
     command_patterns = {
         "latest": r"!!!!!!!!,(\w+)",
@@ -207,6 +213,7 @@ def extract_commands(text):
     else:
         return ["Unable to get parking information"]
 
+@newrelic.agent.background_task()
 def cleanup_query(sql_query):
     if not sql_query.startswith('SELECT'):
         query_start = sql_query.find("!!!!!!!!")
@@ -225,6 +232,7 @@ def cleanup_query(sql_query):
         return return_val
     return sql_query
 
+@newrelic.agent.background_task()
 def validate_sql_query(sql_query):
     malicious_keywords = ['DROP', 'ALTER', 'CREATE', 'UPDATE',
                           'DELETE', 'INSERT', 'GRANT', 'REVOKE',
@@ -238,6 +246,7 @@ def validate_sql_query(sql_query):
 
     return True
 
+@newrelic.agent.background_task()
 def adjust_day(day):
     day_mapping = {
         'M': 'Monday',
@@ -285,6 +294,7 @@ def adjust_day(day):
                 return value
         return "Invalid day"
 
+@newrelic.agent.background_task()
 def adjust_time(time):
     logger.info(f'Adjusting time: {time}')
     try:

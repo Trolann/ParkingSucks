@@ -4,12 +4,14 @@ from os import getenv
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import OpenAIModerationChain
 from mariadb import user_db as memory
+import newrelic.agent
 
 chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),
     temperature=0.7
     )
 
+@newrelic.agent.background_task()
 async def answer_chain(username, question, gpt4=False) -> str:
     is_ok = await complete_gpt_moderation(await get_prompt(question, 'ok'), username)
     if not is_ok:
@@ -24,6 +26,7 @@ async def answer_chain(username, question, gpt4=False) -> str:
     parking_info = await parking_chain(question, schedule=schedule, gpt4=gpt4)
     return await get_final_answer(question=question, schedule=parking_info, gpt4=gpt4)
 
+@newrelic.agent.background_task()
 async def complete_moderation(query: str) -> bool:
     try:
         moderation_chain = OpenAIModerationChain(error=True)
@@ -35,6 +38,7 @@ async def complete_moderation(query: str) -> bool:
         logger.error(f"Query: {query}")
         return False
 
+@newrelic.agent.background_task()
 async def complete_gpt_moderation(query, username) -> bool:
     response = chat(query.to_messages()).content
     await archive_completion(query.to_messages(), response)
@@ -48,6 +52,7 @@ async def complete_gpt_moderation(query, username) -> bool:
         logger.error(f'Unable to determine safety of query: {query}')
     return False
 
+@newrelic.agent.background_task()
 async def get_final_answer(question, schedule, gpt4=False) -> str:
     logger.info(f'Getting final answer for question: {question}')
     question = await get_prompt(question, 'final', schedule=schedule)
@@ -57,6 +62,7 @@ async def get_final_answer(question, schedule, gpt4=False) -> str:
     await archive_completion(question.to_messages(), response)
     return response
 
+@newrelic.agent.background_task()
 async def schedule_summarizer(schedule) -> str:
     pass
 

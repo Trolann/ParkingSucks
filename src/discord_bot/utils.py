@@ -1,11 +1,12 @@
 from os import getenv
 import re
 import aiohttp
-
+import newrelic.agent
 from discord_log import BotLog
 
 logger = BotLog('discord-bot-utils')
 
+@newrelic.agent.background_task()
 def make_pretty(query_results):
     # Determine the maximum length for each column
     column_widths = {}
@@ -45,7 +46,7 @@ def make_pretty(query_results):
     table = '\n'.join([header, separator] + rows)
     return '```\n' + table + '\n```'
 
-
+@newrelic.agent.background_task()
 async def call_completion_api(username, message, channel):
     '''
     Call the completion API to get the messages
@@ -63,7 +64,7 @@ async def call_completion_api(username, message, channel):
             return {'error': 'Error calling completion API'}
         return response
 
-
+@newrelic.agent.background_task()
 async def call_parking_api(username, endpoint, params=None, sql_query=None):
     '''
     Call the parking API to get the data
@@ -100,6 +101,7 @@ async def fetch(session, url, api_key, username, message, channel):
     async with session.post(url, headers=headers, data=data) as response:
         return await response.json(content_type=None)
 
+@newrelic.agent.background_task()
 def convert_schedule(input_string):
     lines = input_string.strip().split('\n')
     formatted_output = []

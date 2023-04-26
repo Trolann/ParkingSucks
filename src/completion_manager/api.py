@@ -2,10 +2,15 @@ import os
 from quart import Quart, jsonify, make_response, request
 from answer_chains import answer_chain
 from completion_log import BotLog
+import newrelic.agent
+
+newrelic.agent.initialize('/app/newrelic.ini')
 
 logger = BotLog('completion-api')
 app = Quart(__name__)
 
+
+@newrelic.agent.background_task()
 @app.route('/completion', methods=['POST'])
 async def completion():
     form = await request.form

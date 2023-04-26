@@ -3,6 +3,7 @@ from os import getenv
 from garage import Garage
 from shuttle_scrapy import ShuttleStatus
 from scraper_log import BotLog
+import newrelic.agent
 
 # Instantiating a new logger object with the name 'mariadb'
 logger = BotLog('mariadb')
@@ -32,6 +33,7 @@ class Parking:
 
         # Not needed in current config, but low effort and could be useful in the future
         self.latest = self.load_latest()
+
     def load_latest(self) -> list:
         """
         This method loads the latest data from the MySQL server and returns it as a list of Garage objects.
@@ -60,6 +62,7 @@ class Parking:
             logger.error(f"Failed to load latest data from {self.table}")
         return return_list
 
+    @newrelic.agent.background_task()
     def new(self, g: Garage) -> bool:
         """
         This method adds a new Garage object to the MySQL server if it meets certain criteria.
@@ -116,11 +119,20 @@ class Shuttles:
         # Set the table name
         self.table = table_name
 
+    @newrelic.agent.background_task()
     def insert_data(self, stop_name, time_to_departure, updated_at):
         cursor = self.conn.cursor()
-        insert_query = f"INSERT INTO `{self.table}` (stop_name, time_to_departure, updated_at) VALUES (%s, %s, %s)"
-        cursor.execute(insert_query, (stop_name, time_to_departure, updated_at))
+
+        # Perform calculations for the day_of_week, hour_of_day, and rounded_time_to_departure
+        day_of_week = updated_at.strftime('%A')
+        hour_of_day = updated_at.hour
+        rounded_time_to_departure = (time_to_departure // 5) * 5
+
+        # Insert data into the sjsu-shuttles table
+        insert_data_query = f"INSERT INTO `{self.table}` (stop_name, time_to_departure, updated_at, day_of_week, hour_of_day, rounded_time_to_departure) VALUES (%s, %s, %s, %s, %s, %s)"
+        cursor.execute(insert_data_query, (stop_name, time_to_departure, updated_at, day_of_week, hour_of_day, rounded_time_to_departure))
         self.conn.commit()
+
         cursor.close()
 
     def get_latest_shuttle_statuses(self):

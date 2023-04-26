@@ -4,10 +4,12 @@ from discord import MessageReference
 from discord_log import BotLog
 import asyncio
 from os import getenv
+import newrelic.agent
 
 app = Quart(__name__)
 logger = BotLog('discord-bot-api')
 
+@newrelic.agent.background_task()
 @app.route('/message_user', methods=['POST'])
 async def message_user():
     data = await request.json
@@ -28,6 +30,7 @@ async def message_user():
     logger.info(f'Message sent successfully')
     return {"success": True}, 200
 
+@newrelic.agent.background_task()
 @app.route('/reply', methods=['POST'])
 async def reply():
     data = await request.json

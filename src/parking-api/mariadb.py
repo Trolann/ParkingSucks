@@ -3,6 +3,7 @@ from os import getenv
 from datetime import timedelta, datetime
 from api_log import BotLog
 from time import sleep
+import newrelic.agent
 
 logger = BotLog('api-mariadb')
 
@@ -11,6 +12,7 @@ class Config:
         self.conn = None
         self.retry_connection()
 
+    @newrelic.agent.background_task()
     def retry_connection(self, max_retries=3, delay=5):
         retries = 0
         while retries < max_retries:
@@ -36,6 +38,7 @@ class Config:
     def __del__(self):
         self.conn.close()
 
+    @newrelic.agent.background_task()
     def get_cursor(self):
         try:
             cursor = self.conn.cursor(dictionary=True)
@@ -48,6 +51,7 @@ class Config:
                 return None
         return cursor
 
+    @newrelic.agent.background_task()
     def get_latest(self, table, shuttle=False):
         cursor = self.get_cursor()
         cursor.execute(f'''
@@ -85,6 +89,7 @@ class Config:
         logger.info(f'Found {num_results} results for latest entry in {table}')
         return result
 
+    @newrelic.agent.background_task()
     def get_yesterday(self, table, shuttle=False):
         cursor = self.get_cursor()
         time_last_week = datetime.now() - timedelta(weeks=1)
@@ -124,6 +129,7 @@ class Config:
         logger.info(f'Found {len(results)} results for last week in {table}')
         return results
 
+    @newrelic.agent.background_task()
     def get_last_week(self, table, shuttle=False):
         cursor = self.get_cursor()
 
@@ -164,6 +170,7 @@ class Config:
         logger.info(f'Found {len(results)} results for yesterday in {table}')
         return results
 
+    @newrelic.agent.background_task()
     def get_average(self, table, day, time, shuttle=False):
         cursor = self.get_cursor()
         query = f"""
@@ -206,6 +213,7 @@ class Config:
         logger.info(f'Found {len(results)} results for {day} at {time} in {table}')
         return results
 
+    @newrelic.agent.background_task()
     def run_query(self, sql_query):
         cursor = self.get_cursor()
         cursor.execute(sql_query)
