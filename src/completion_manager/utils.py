@@ -70,6 +70,9 @@ async def determine_column_widths(query_results):
     column_widths = {}
     data_line = ''
     for entry in query_results:
+        # If entry is a string type, skip it
+        if isinstance(entry, str):
+            continue
         try:
             for key, value in entry.items():
                 if key == 'address':

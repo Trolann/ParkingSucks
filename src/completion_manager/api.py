@@ -4,7 +4,9 @@ from answer_chains import answer_chain
 from completion_log import BotLog
 import newrelic.agent
 from nr_openai_observability import monitor
-from os import environ, getenv
+from os import getenv
+from mariadb import Memory
+
 monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
 newrelic.agent.initialize('/app/newrelic.ini')
 
@@ -30,7 +32,7 @@ async def completion():
     if 'gpt4' in channel:
         logger.info(f'Using GPT4 for {username}')
         gpt4 = True
-    final_answer = await answer_chain(username, message, message_id=message_id, gpt4=gpt4)
+    final_answer = await answer_chain(username, message, message_id=message_id, memory=memory, gpt4=gpt4)
     logger.info(f'Got final answer: {final_answer} {type(final_answer)}')
     response = jsonify(final_answer)
     response.status_code = 200
@@ -39,4 +41,5 @@ async def completion():
 
 
 if __name__ == '__main__':
+    memory = Memory()
     app.run(host='0.0.0.0', port=8080, debug=True)

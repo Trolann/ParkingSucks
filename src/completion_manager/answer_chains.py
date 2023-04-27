@@ -3,7 +3,6 @@ from parking_chains import parking_chain
 from os import getenv
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import OpenAIModerationChain
-from mariadb import user_db as memory
 import newrelic.agent
 from nr_openai_observability import monitor
 
@@ -14,11 +13,23 @@ chat = ChatOpenAI(
     )
 
 @newrelic.agent.background_task()
-async def answer_chain(username, question, message_id, gpt4=False) -> str:
+async def answer_chain(username, question, message_id, memory, gpt4=False) -> str:
     is_ok = await complete_gpt_moderation(await get_prompt(question, 'ok'), username)
     if is_ok == 0:
         logger.info(f'Message not allowed: {question} (username: {username})')
-        return 'Query not allowed'
+        current_sched = memory.get_schedule(username)
+        if 'Bad Actor Count: ' not in current_sched:
+            new_sched = f'{current_sched}\nBad Actor Count: 1'
+            count = 1
+        else:
+            # Increment the number of bad actor counts
+            count = int(current_sched.split('Bad Actor Count: ')[-1]) + 1
+            # Remove old Bad Actor Count from current_shed to place a new one in
+            current_sched = current_sched.split('Bad Actor Count: ')[0]
+            new_sched = f'{current_sched}\nBad Actor Count: {count}'
+        memory.write_schedule(username, new_sched)
+        # determine first/second/third/found string based on count
+        return 'You\'re not allowed to ask that.' if count == 1 else f"You're not allowed to ask that. I've had to tell you {count} times."
     if is_ok == 2:
         logger.info(f'Trying a command, we shall see. Question: {question}')
 
