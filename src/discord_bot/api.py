@@ -35,14 +35,13 @@ async def message_user():
 async def reply():
     data = await request.json
     message_str = data.get('message_str')
-    message_id = data.get('id')
+    message_id = data.get('message_id')
 
     if not message_str or not message_id:
         logger.error(f'Invalid input: {data}')
         return {"error": "Invalid input"}, 400
 
     try:
-        print(getenv('DISCORD_SERVER_ID'))
         server = bot.get_guild(int(getenv('DISCORD_SERVER_ID')))
         original_message = None
         for channel in server.channels:
@@ -51,13 +50,13 @@ async def reply():
             logger.info(f'Checking channel {channel.name} ({channel.id})')
             try:
                 original_message = await channel.fetch_message(int(message_id))
+                logger.info(f'Found message in channel {channel.name} ({channel.id})')
                 break
             except:
                 continue
-            finally:
-                if not original_message:
-                    logger.error(f'Message not found: {message_id}')
-                    return {"error": "Message not found"}, 404
+        if not original_message:
+            logger.error(f'Message not found: {message_id}')
+            return {"error": "Message not found"}, 404
         channel = original_message.channel
         message_reference = MessageReference(message_id=int(message_id), channel_id=channel.id)
         logger.info(f'Sending message to channel {channel.name} ({channel.id})')

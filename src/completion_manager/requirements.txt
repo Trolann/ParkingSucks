@@ -10,3 +10,4 @@ aiofile==3.8.5
 aiomysql==0.1.1
 tiktoken==0.3.3
 newrelic==8.8.0
+nr-openai-observability==0.2.4

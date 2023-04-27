@@ -47,7 +47,7 @@ def make_pretty(query_results):
     return '```\n' + table + '\n```'
 
 @newrelic.agent.background_task()
-async def call_completion_api(username, message, channel):
+async def call_completion_api(username, message, channel, message_id):
     '''
     Call the completion API to get the messages
     :param username:
@@ -58,7 +58,8 @@ async def call_completion_api(username, message, channel):
         url = getenv("COMPLETION_API_URL") + '/completion'
         api_key = getenv("COMPLETION_API_KEY")
         try:
-            response = await fetch(session, url, api_key, username, message, channel)
+            print('trying')
+            response = await fetch(session, url, api_key, username, message, channel, message_id)
         except Exception as e:
             logger.error(f"Error calling completion API: {e}")
             return {'error': 'Error calling completion API'}
@@ -95,9 +96,12 @@ async def call_parking_api(username, endpoint, params=None, sql_query=None):
             raise Exception(f"Error calling API. Status code: {response.status}, response: {response.text}")
 
 
-async def fetch(session, url, api_key, username, message, channel):
+async def fetch(session, url, api_key, username, message, channel, message_id=0):
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     data = {'api_key': api_key, 'username': username, 'message': message, 'channel': channel}
+    if message_id > 0:
+        data['message_id'] = message_id
+    print('fetching')
     async with session.post(url, headers=headers, data=data) as response:
         return await response.json(content_type=None)
 
@@ -124,3 +128,4 @@ def convert_schedule(input_string):
             class_name, days_times, location = None, None, None
 
     return '\n'.join(formatted_output)
+

@@ -1,22 +1,29 @@
-from utils import get_prompt, archive_completion, logger
+from utils import get_prompt, archive_completion, logger, send_reply, get_funny
 from parking_chains import parking_chain
 from os import getenv
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import OpenAIModerationChain
 from mariadb import user_db as memory
 import newrelic.agent
+from nr_openai_observability import monitor
 
+monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
 chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),
     temperature=0.7
     )
 
 @newrelic.agent.background_task()
-async def answer_chain(username, question, gpt4=False) -> str:
+async def answer_chain(username, question, message_id, gpt4=False) -> str:
     is_ok = await complete_gpt_moderation(await get_prompt(question, 'ok'), username)
-    if not is_ok:
+    if is_ok == 0:
         logger.info(f'Message not allowed: {question} (username: {username})')
         return 'Query not allowed'
+    if is_ok == 2:
+        logger.info(f'Trying a command, we shall see. Question: {question}')
+
+    if gpt4:
+        send_reply(get_funny(), message_id)
     blank = 'No schedule for the user. This might be their first time here.'
     schedule = await memory.get_schedule(username)
     if schedule == blank:
@@ -39,18 +46,21 @@ async def complete_moderation(query: str) -> bool:
         return False
 
 @newrelic.agent.background_task()
-async def complete_gpt_moderation(query, username) -> bool:
+async def complete_gpt_moderation(query, username) -> int:
     response = chat(query.to_messages()).content
     await archive_completion(query.to_messages(), response)
     logger.info(f'Got response: {response}')
     if '!!!!!!!!' in response:
         logger.info(f'Found a safe query')
-        return True
+        return 1
+    if '########' in response:
+        logger.info(f'Found an unsure query')
+        return 2
     if '@@@@@@@@' in response:
         logger.critical(f"UNSAFE QUERY DETECTED from {username}")
     else:
         logger.error(f'Unable to determine safety of query: {query}')
-    return False
+    return 0
 
 @newrelic.agent.background_task()
 async def get_final_answer(question, schedule, gpt4=False) -> str:

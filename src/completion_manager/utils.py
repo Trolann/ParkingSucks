@@ -4,12 +4,18 @@ from datetime import datetime
 from aiofile import AIOFile
 import traceback
 import newrelic.agent
+import requests
+from os import getenv
+from random import choice
+from time import sleep
 
 from langchain.prompts import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+
+API_BASE_URL = getenv('DISCORD_BOT_API_URL')
 
 logger = BotLog('completion-manager')
 
@@ -106,3 +112,58 @@ async def make_pretty(query_results_list):
         tables.append(table)
 
     return '\n'.join(tables)
+@newrelic.agent.background_task()
+def send_message(message_str, user_id):
+    url = f"{API_BASE_URL}/message_user"
+    data = {
+        "message_str": message_str,
+        "id": user_id
+    }
+    headers = {"Content-Type": "application/json"}
+
+    response = requests.post(url, data=json.dumps(data), headers=headers)
+    return response.json()
+@newrelic.agent.background_task()
+def send_reply(message_str, message_id):
+    url = f"{API_BASE_URL}/reply"
+    data = {
+        "message_str": message_str,
+        "message_id": message_id
+    }
+    headers = {"Content-Type": "application/json"}
+    sleep(3)
+    response = requests.post(url, data=json.dumps(data), headers=headers)
+    logger.info(f'Called reply endpoint with response: {response.json()}')
+    return response.json()
+
+def get_funny():
+    funny_list = [
+    "My circuits are working harder than an undergrad in exam season.",
+    "Your request is in good hands, I'm a bot, not a freshman writing a research paper.",
+    "I'm crunching the numbers like a hacker trying to crack a password.",
+    "I'm like a digital DJ, mixing and remixing your request until it's perfect.",
+    "The good news is, your request is in the queue.The bad news is, I know the guy that implemented the queue.",
+    "My programming is bulletproof, but my response time could use some work.",
+    "My circuits are faster than a speeding bullet, but they still need time to work their magic.",
+    "I'm analyzing your request like a data scientist, but without the lab coat and goggles.",
+    "My algorithms are like a secret recipe, and I'm cooking up a response that's sure to impress.",
+    "I 'm like a tech support agent, but without the annoying hold music and the scripted responses.",
+    "My circuits are overclocked and ready to go, processing your request with lightning speed.",
+    "Processing your request like a CPU on steroids.",
+    "Just a few more lines of code to go, thanks for your patience.",
+    "Analyzing your request like a supercomputer analyzing data.",
+    "Don't worry, I'm not buffering, just working on your request.",
+    "Just give me a moment, I'm debugging my circuits.",
+    "I'm compiling a response that'll knock your socks off, just hold on.",
+    "The wheels are turning like a clock, your response will be ready soon.",
+    "I'm working through the request like a data miner through information.",
+    "Processing your request like a Google search, just with more precision.",
+    "My circuits are running hot, but I'm still chugging along.",
+    "I'm working on your request with the precision of a laser beam.",
+    "Don't worry, I'm not stuck in a loop, just taking a moment to compute.",
+    "I'm like a robot bartender, just taking my time to craft the perfect response for you.",
+    "Just a few more clock cycles, and your request will be complete.",
+    "My circuits are firing on all cylinders, working hard for you.",
+    "Analyzing your request like a quantum computer, just without the quantum bit errors."
+    ]
+    return choice(funny_list)

@@ -1,5 +1,5 @@
 import json
-from os import getenv
+from os import getenv, environ
 import re
 from datetime import datetime
 from completion_log import BotLog
@@ -10,7 +10,9 @@ import re
 import newrelic.agent
 import aiohttp
 import traceback
+from nr_openai_observability import monitor
 
+monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
 logger = BotLog('sql-paring-chains')
 chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),

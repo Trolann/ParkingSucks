@@ -3,7 +3,9 @@ from quart import Quart, jsonify, make_response, request
 from answer_chains import answer_chain
 from completion_log import BotLog
 import newrelic.agent
-
+from nr_openai_observability import monitor
+from os import environ, getenv
+monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
 newrelic.agent.initialize('/app/newrelic.ini')
 
 logger = BotLog('completion-api')
@@ -17,6 +19,7 @@ async def completion():
     api_key = form.get('api_key')
     username = form.get('username')
     message = form.get('message')
+    message_id = form.get('message_id')
     channel = form.get('channel', 'asdf')
     logger.info(f'Got request from {username} with message: {message}')
 
@@ -27,7 +30,7 @@ async def completion():
     if 'gpt4' in channel:
         logger.info(f'Using GPT4 for {username}')
         gpt4 = True
-    final_answer = await answer_chain(username, message, gpt4=gpt4)
+    final_answer = await answer_chain(username, message, message_id=message_id, gpt4=gpt4)
     logger.info(f'Got final answer: {final_answer} {type(final_answer)}')
     response = jsonify(final_answer)
     response.status_code = 200

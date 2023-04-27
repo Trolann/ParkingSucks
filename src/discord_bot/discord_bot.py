@@ -40,7 +40,16 @@ async def on_message(message):
         if message.channel.category_id != 1099892029523247246:
             await message.reply("Please use the 'ParkingSucks GPT Bot' categories for getting parking information.")
             return
+        content = message.content.replace(f'<@!{bot.user.id}>', '', 1).lstrip()
+        if len(content) > 500:
+            await message.reply("Sorry, that message is too long. Try making your message shorter and asking more than one message to get the information you need.")
+            return
 
+        response = await call_completion_api(str(message.author), content, str(message.channel.name), message.id)
+        if 'error' in response:
+            await message.reply("Sorry, that didn't work")
+        else:
+            await message.reply(response)
     if 'convert-schedule' in message.channel.name:
         logger.info(f'Converting schedule for {message.author} in {message.channel}')
         converted_schedule = convert_schedule(message.content)
@@ -64,18 +73,8 @@ async def on_message(message):
         await message.reply(await call_parking_api(str(message.author), endpoint_name, params=params))
         return
 
-
-    content = message.content.replace(f'<@!{bot.user.id}>', '', 1).lstrip()
-    if len(content) > 500:
-        await message.reply("Sorry, that message is too long. Try making your message shorter and asking more than one message to get the information you need.")
-        return
-    response = await call_completion_api(str(message.author), content, str(message.channel.name))
-    if 'error' in response:
-        await message.reply("Sorry, that didn't work")
-    else:
-        await message.reply(response)
-        # Get the system channel using discord.py
-        # system_channel = bot.get_channel(1096444199433408632)
+            # Get the system channel using discord.py
+            # system_channel = bot.get_channel(1096444199433408632)
 
 async def run_bot():
     DISCORD_TOKEN = getenv('DISCORD_TOKEN')
