@@ -7,7 +7,14 @@ from os import getenv, path, makedirs
 # Standard logging class for all microservices
 
 class BotLog:
+    """
+    Standard logger class which sets up a rotating logger with a given name and log level.
+    """
     def __init__(self, logger_name: str) -> None:
+        """
+        :type logger_name: str
+        :param logger_name:
+        """
         self.log_level = getenv("LOG_LEVEL", "INFO")
         self.logger = getLogger(logger_name)
         self.log_file_name = f"logs/sjsu_scraper_{self.log_level}_{datetime.now().strftime('%b').lower()}.log"

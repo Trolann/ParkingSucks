@@ -12,7 +12,7 @@ import aiohttp
 import traceback
 from nr_openai_observability import monitor
 
-monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
+#monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
 logger = BotLog('sql-paring-chains')
 chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),

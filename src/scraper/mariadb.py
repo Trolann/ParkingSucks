@@ -98,8 +98,7 @@ class Parking:
 
 class Shuttles:
     """
-    This class handles the configuration for the MySQL database. It has methods to create a table, load the latest data
-    and add new data to the table.
+    A connection to the Shuttle DB
     """
     def __init__(self, table_name) -> None:
         """
@@ -121,6 +120,14 @@ class Shuttles:
 
     @newrelic.agent.background_task()
     def insert_data(self, stop_name, time_to_departure, updated_at):
+        """
+        Inserts data into the table
+
+        :param stop_name:
+        :param time_to_departure:
+        :param updated_at:
+        :return:
+        """
         cursor = self.conn.cursor()
 
         # Perform calculations for the day_of_week, hour_of_day, and rounded_time_to_departure
@@ -136,6 +143,10 @@ class Shuttles:
         cursor.close()
 
     def get_latest_shuttle_statuses(self):
+        """
+        Gets the latest shuttle statuses from the table
+        :return:
+        """
         cursor = self.conn.cursor()
         query = f"""
             SELECT stop_name, time_to_departure, updated_at

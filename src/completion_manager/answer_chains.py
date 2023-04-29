@@ -7,7 +7,7 @@ import newrelic.agent
 from nr_openai_observability import monitor
 from time import sleep
 
-monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
+#monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
 chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),
     temperature=0.7

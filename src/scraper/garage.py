@@ -20,5 +20,6 @@ class Garage:
     def get_tuple(self):
         """
         This method returns a tuple of the garage's name, address, fullness, and timestamp.
+        :return: (tuple) A tuple of the garage's name, address, fullness, and timestamp.
         """
         return self.name, self.address, self.fullness, self.timestamp

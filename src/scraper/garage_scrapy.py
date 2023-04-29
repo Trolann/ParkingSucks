@@ -10,7 +10,7 @@ from threading import Thread
 from shuttle_scrapy import monitor_shuttle_statuses
 import newrelic.agent
 
-newrelic.agent.initialize('/app/newrelic.ini')
+#newrelic.agent.initialize('/app/newrelic.ini')
 logger = BotLog('garage_scrapy')
 
 
@@ -19,6 +19,8 @@ def get_site(site_url):
     """
     This function takes in a url and makes a GET request to the URL using a random user agent
     Returns the content of the page as a string in utf-8 format.
+    :param site_url:
+    :return:
     """
     headers = {'User-Agent': random_ua()[0], "Accept-Language": "en-US, en;q=0.5"}
     page = requests.get(site_url, headers=headers, verify=False)
@@ -35,6 +37,8 @@ def get_garage_info(garage_url):
     """
     This function takes in a garage url and extracts the garage information from the site
     Returns a list of Garage objects
+    :param garage_url:
+    :return:
     """
     # Make a GET request to the URL
     response = get_site(garage_url)
@@ -69,12 +73,17 @@ def get_garage_info(garage_url):
 
 
 if __name__ == '__main__':
+
     # launch the shuttle scraper in a separate thread to be monitored within the loop and restarted if it crashes
     shuttle_thread = Thread(target=monitor_shuttle_statuses, args=(shuttles_db,), daemon=True)
     shuttle_thread.start()
+
+    # Run the scraper in a loop
     while True:
         url = "https://sjsuparkingstatus.sjsu.edu/"
         number_new = 0
+
+        # Scrape the garages
         for garage in get_garage_info(url):
             if not garage:
                 continue

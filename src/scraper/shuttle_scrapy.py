@@ -16,7 +16,20 @@ import newrelic.agent
 logger = BotLog("shuttle_scrape")
 
 class ShuttleStatus:
+    """
+    Class to represent the status of a shuttle stop
+    """
     def __init__(self, stop_url, stop_name=None, time_to_departure=None, updated_at=None):
+        """
+        :type stop_url: str
+        :type stop_name: str
+        :type time_to_departure: int
+        :type updated_at: datetime
+        :param stop_url:
+        :param stop_name:
+        :param time_to_departure:
+        :param updated_at:
+        """
         self.stop_url = stop_url
         self.stop_name = stop_name
         self.updated_at = updated_at
@@ -27,8 +40,13 @@ class ShuttleStatus:
 
     @newrelic.agent.background_task()
     def scrape_data(self):
+        """
+        Scrape the shuttle status from the stop_url
+        :return:
+        """
         logger.info(f'Starting scrape of {self.stop_url}')
 
+        # Use Selenium to scrape the page
         options = Options()
         options.add_argument("--no-sandbox")
         options.add_argument("--headless")
@@ -39,6 +57,8 @@ class ShuttleStatus:
         chrome_service.command_line_args().append('--no-sandbox')
         chrome_service.command_line_args().append('--disable-dev-shm-usage')
         driver = webdriver.Chrome(service=chrome_service, options=options)
+
+        # Get the webpage or error out
         try:
             driver.get(self.stop_url)
             WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, "//ul[@id='stop-departures-list']/li")))
@@ -50,6 +70,7 @@ class ShuttleStatus:
             driver.quit()
 
         logger.info(f'Selenium scrape of {self.stop_url} complete')
+
         # Find and parse timestamp
         timestamp_text = soup.find("p", {"id": "infobox"}).text
         timestamp_text = re.sub(r'\s\([A-Za-z\s]+\)$', '', timestamp_text)  # Remove timezone
@@ -66,6 +87,7 @@ class ShuttleStatus:
         stop_name_text = soup.find("h2").text
         self.stop_name = stop_name_text.replace("Next departures for ", "").strip()
         logger.info(f'Stop name: {self.stop_name}')
+
         # Find and parse next departure times
         next_departures = soup.find_all("li", {"class": "eta-route"})
         if len(next_departures) > 0:
@@ -93,9 +115,22 @@ class ShuttleStatus:
 
 @newrelic.agent.background_task()
 def monitor_shuttle_statuses(shuttle_db):
+    """
+    Monitor shuttle statuses in a loop and log a new ETA whenever the current ETA is > 2
+    minutes greater than the previous time, or whenever an ETA is first reported or observed
+    as unavailable.
+
+    Expected to run in a thread with exception handling and restarts.
+
+    :type shuttle_db: ShuttleDB
+    :param shuttle_db:
+    :return:
+    """
     stop1 = ShuttleStatus("http://sjsu.doublemap.com/map/text?stop=1")
     stop5 = ShuttleStatus("http://sjsu.doublemap.com/map/text?stop=5")
     shuttles = [stop1, stop5]
+
+    # Ensure the first scrape is sent to the DB
     prev_time_to_departure = [-1000] * len(shuttles)
 
     while True:
@@ -109,8 +144,12 @@ def monitor_shuttle_statuses(shuttle_db):
         for idx, shuttle in enumerate(shuttles):
             logger.info(f'Previous time to departure for {shuttle.stop_name}: {prev_time_to_departure[idx]} minutes')
             logger.info(f'Current time to departure for {shuttle.stop_name}: {shuttle.time_to_departure} minutes')
+
+            # If the time_to_departure has increased by more than 2 minutes, or if the time_to_departure
+            # has changed from a valid value to an invalid value, log the new time_to_departure
             if (shuttle.time_to_departure - prev_time_to_departure[idx] > 2 and shuttle.time_to_departure != 0) or \
                (shuttle.time_to_departure == -1 and prev_time_to_departure[idx] != -1):
+                # Log the new time_to_departure
                 shuttle_db.insert_data(shuttle.stop_name, shuttle.time_to_departure, shuttle.updated_at)
                 logger.info(f'New shuttle time for {shuttle.stop_name}: {shuttle.time_to_departure} minutes')
             prev_time_to_departure[idx] = shuttle.time_to_departure
