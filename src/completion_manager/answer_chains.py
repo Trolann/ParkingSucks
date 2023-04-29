@@ -5,6 +5,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chains import OpenAIModerationChain
 import newrelic.agent
 from nr_openai_observability import monitor
+from time import sleep
 
 monitor.initialization(getenv('NEW_RELIC_LICENSE_KEY_AI'))
 chat = ChatOpenAI(
@@ -13,7 +14,7 @@ chat = ChatOpenAI(
     )
 
 @newrelic.agent.background_task()
-async def answer_chain(username, question, message_id, memory, gpt4=False) -> str:
+async def answer_chain(username, question, message_id, user_id, memory, gpt4=False) -> str:
     is_ok = await complete_gpt_moderation(await get_prompt(question, 'ok'), username)
     if is_ok == 0:
         logger.info(f'Message not allowed: {question} (username: {username})')
@@ -35,15 +36,25 @@ async def answer_chain(username, question, message_id, memory, gpt4=False) -> st
 
     if gpt4:
         send_reply(get_funny(), message_id)
-    blank = 'No schedule for the user. This might be their first time here.'
-    schedule = await memory.get_schedule(username)
-    if schedule == blank:
+
+    schedule = memory.get_schedule(username)
+    if schedule == '':
         logger.info(f'No schedule for user {username}')
     else:
         logger.info(f'Got schedule for user {username}')
     parking_info = await parking_chain(question, schedule=schedule, gpt4=gpt4)
-    return await get_final_answer(question=question, schedule=parking_info, gpt4=gpt4)
+    map_info = await map_chain(question, schedule=schedule, gpt4=gpt4)
+    return await get_final_answer(question=question, schedule=parking_info, closest_garages=map_info, gpt4=gpt4)
 
+@newrelic.agent.background_task()
+async def map_chain(question, schedule, gpt4=False):
+    question = await get_prompt(question, 'map')
+    chat.model_name = "gpt-3.5-turbo" if not gpt4 else "gpt-4"
+    map_response = chat(question.to_messages())
+    # Extract just the text after "Final Answer:"
+    map_response = map_response.content.split('Final Answer: ')[-1]
+    logger.info(f'Got map response: {map_response}')
+    return map_response
 @newrelic.agent.background_task()
 async def complete_moderation(query: str) -> bool:
     try:
@@ -74,9 +85,9 @@ async def complete_gpt_moderation(query, username) -> int:
     return 0
 
 @newrelic.agent.background_task()
-async def get_final_answer(question, schedule, gpt4=False) -> str:
+async def get_final_answer(question, schedule, closest_garages, gpt4=False) -> str:
     logger.info(f'Getting final answer for question: {question}')
-    question = await get_prompt(question, 'final', schedule=schedule)
+    question = await get_prompt(question, 'final', schedule=schedule, closest_garages=closest_garages)
     chat.model_name = "gpt-3.5-turbo" if not gpt4 else "gpt-4"
     response = chat(question.to_messages()).content
 

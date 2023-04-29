@@ -27,23 +27,29 @@ class ShuttleStatus:
 
     @newrelic.agent.background_task()
     def scrape_data(self):
+        logger.info(f'Starting scrape of {self.stop_url}')
+
         options = Options()
+        options.add_argument("--no-sandbox")
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
-        options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         chrome_service = Service(executable_path='/usr/bin/chromedriver')
         chrome_service.command_line_args().append('--headless')
         chrome_service.command_line_args().append('--no-sandbox')
         chrome_service.command_line_args().append('--disable-dev-shm-usage')
         driver = webdriver.Chrome(service=chrome_service, options=options)
-        driver.get(self.stop_url)
+        try:
+            driver.get(self.stop_url)
+            WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, "//ul[@id='stop-departures-list']/li")))
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+        except Exception as e:
+            logger.error(f'Error scraping {self.stop_url}: {e}')
+            return
+        finally:
+            driver.quit()
 
-        WebDriverWait(driver, 20).until(
-            EC.visibility_of_element_located((By.XPATH, "//ul[@id='stop-departures-list']/li")))
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        driver.quit()
-
+        logger.info(f'Selenium scrape of {self.stop_url} complete')
         # Find and parse timestamp
         timestamp_text = soup.find("p", {"id": "infobox"}).text
         timestamp_text = re.sub(r'\s\([A-Za-z\s]+\)$', '', timestamp_text)  # Remove timezone
@@ -59,22 +65,31 @@ class ShuttleStatus:
         # Find and parse stop name
         stop_name_text = soup.find("h2").text
         self.stop_name = stop_name_text.replace("Next departures for ", "").strip()
-
+        logger.info(f'Stop name: {self.stop_name}')
         # Find and parse next departure times
         next_departures = soup.find_all("li", {"class": "eta-route"})
         if len(next_departures) > 0:
             departure = next_departures[0]
             try:
-                if "now" in departure.text.lower():
+                logger.info(f'Departure information: {departure.text.lower()}')
+                if "no etas currently available" in departure.text.lower():
+                    time_to_departure = -1
+                elif "now" in departure.text.lower():
                     time_to_departure = 0
                 else:
                     time_to_departure = int(re.search(r"\d+(?=\sminutes)", departure.text).group())
                 self.time_to_departure = time_to_departure
-                next_departure_time = self.updated_at + timedelta(minutes=time_to_departure)
-                self.next_shuttle_times.append(next_departure_time)
+                logger.info(f'Time to departure for {self.stop_name}: {time_to_departure} minutes')
+                if time_to_departure >= 0:
+                    next_departure_time = self.updated_at + timedelta(minutes=time_to_departure)
+                    self.next_shuttle_times.append(next_departure_time)
             except AttributeError as a:
                 logger.error(f"Error parsing next departure times: {a}")
                 logger.info(f'Departure information: {departure.text}')
+        else:
+            self.time_to_departure = -1
+            self.next_shuttle_times = []
+            logger.info(f'No departure information found for {self.stop_name}')
 
 @newrelic.agent.background_task()
 def monitor_shuttle_statuses(shuttle_db):
@@ -92,12 +107,16 @@ def monitor_shuttle_statuses(shuttle_db):
 
         # Check if the time_to_departure has increased by more than 5 points for each stop
         for idx, shuttle in enumerate(shuttles):
-            if shuttle.time_to_departure - prev_time_to_departure[idx] > 2 and shuttle.time_to_departure != 0:
+            logger.info(f'Previous time to departure for {shuttle.stop_name}: {prev_time_to_departure[idx]} minutes')
+            logger.info(f'Current time to departure for {shuttle.stop_name}: {shuttle.time_to_departure} minutes')
+            if (shuttle.time_to_departure - prev_time_to_departure[idx] > 2 and shuttle.time_to_departure != 0) or \
+               (shuttle.time_to_departure == -1 and prev_time_to_departure[idx] != -1):
                 shuttle_db.insert_data(shuttle.stop_name, shuttle.time_to_departure, shuttle.updated_at)
                 logger.info(f'New shuttle time for {shuttle.stop_name}: {shuttle.time_to_departure} minutes')
             prev_time_to_departure[idx] = shuttle.time_to_departure
 
         sleep(60)
+
 
 
 if __name__ == "__main__":

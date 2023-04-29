@@ -22,6 +22,10 @@ def get_site(site_url):
     """
     headers = {'User-Agent': random_ua()[0], "Accept-Language": "en-US, en;q=0.5"}
     page = requests.get(site_url, headers=headers, verify=False)
+    # if not a 2xx or 3xx status code, return None
+    if page.status_code not in range(200, 400):
+        logger.error(f'GET request to {site_url} returned {page.status_code} status code.')
+        return None
     logger.info(f'GET request to {site_url} returned {page.status_code} status code.')
     return page.content.decode('utf-8')
 
@@ -34,6 +38,8 @@ def get_garage_info(garage_url):
     """
     # Make a GET request to the URL
     response = get_site(garage_url)
+    if not response:
+        return None
 
     # Parse the HTML using Beautiful Soup
     soup = BeautifulSoup(response, 'html.parser')
@@ -70,6 +76,8 @@ if __name__ == '__main__':
         url = "https://sjsuparkingstatus.sjsu.edu/"
         number_new = 0
         for garage in get_garage_info(url):
+            if not garage:
+                continue
             logger.info(f'New garage: {garage}')
             added_new = garage_db.new(garage)
             number_new += 1 if added_new else 0

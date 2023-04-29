@@ -45,7 +45,7 @@ async def on_message(message):
             await message.reply("Sorry, that message is too long. Try making your message shorter and asking more than one message to get the information you need.")
             return
 
-        response = await call_completion_api(str(message.author), content, str(message.channel.name), message.id)
+        response = await call_completion_api(str(message.author), content, str(message.channel.name), message.id, message.author.id)
         if 'error' in response:
             await message.reply("Sorry, that didn't work")
         else:

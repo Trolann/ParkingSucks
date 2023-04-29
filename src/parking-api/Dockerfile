@@ -9,7 +9,5 @@ RUN pip install newrelic
 RUN mkdir /app/logs
 COPY . /app
 
-# Create a directory for logs inside the container
-
 
 CMD ["python", "api.py"]

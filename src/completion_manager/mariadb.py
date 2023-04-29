@@ -90,7 +90,7 @@ class Memory:
             except Exception as e:
                 logger.error(f"Failed to fetch schedule for user '{username}': {e}")
 
-        return schedule if schedule else 'No schedule for the user. This might be their first time here.'
+        return schedule if schedule else ''
 
     @newrelic.agent.background_task()
     def delete_schedule(self, username_hashed):

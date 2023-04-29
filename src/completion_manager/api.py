@@ -22,6 +22,7 @@ async def completion():
     username = form.get('username')
     message = form.get('message')
     message_id = form.get('message_id')
+    user_id = form.get('user_id')
     channel = form.get('channel', 'asdf')
     logger.info(f'Got request from {username} with message: {message}')
 
@@ -32,7 +33,7 @@ async def completion():
     if 'gpt4' in channel:
         logger.info(f'Using GPT4 for {username}')
         gpt4 = True
-    final_answer = await answer_chain(username, message, message_id=message_id, memory=memory, gpt4=gpt4)
+    final_answer = await answer_chain(username, message, message_id=message_id, user_id=user_id, memory=memory, gpt4=gpt4)
     logger.info(f'Got final answer: {final_answer} {type(final_answer)}')
     response = jsonify(final_answer)
     response.status_code = 200
