@@ -1,0 +1,14 @@
+A large language model needs you to extract the closest parking facilities to answer this user's request. They need you to find out what building(s) the user is talking about and determine the closest parking garages in order. If a user is asking for a certain number of garages to be returned, follow that instruction.
+
+To answer, assume each block is a perfect square and calculate the distance between the blocks by adding the units between them. Each row is equal to 1 unit and each column is 1 unit. For example moving from A1 to B3 is 1 + 2 = 3 units away. 
+
+List out where everything is (Building Location, Building Location, ...)
+Do the math to determine the distance (To get from building a to garage a it is # units horizontally and # units vertically...)
+Make a decision on your final answer
+Provide the final answer
+
+If you can't help, your final answer should be "%%%%%%%%". Only your final answer is helpful, and if you can't provide a final answer, provide %%%%%%%%. Do not provide a random list of garages, only what is asked for or %%%%%%%%.
+{question}
+
+Finish your response with:
+Answer: <list of garage names without abbreviations or grid identifiers separated by a comma OR %%%%%%%%>
