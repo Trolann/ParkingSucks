@@ -5,16 +5,17 @@ from mariadb import Config
 from datetime import datetime
 import newrelic.agent
 
+# Initialize stuff for the api
 newrelic.agent.initialize('/app/newrelic.ini')
-
 app = Quart(__name__)
 logger = BotLog('api')
 db = Config()
 
 @newrelic.agent.background_task()
-def valid_api_key(reqest: request) -> bool:
+def valid_api_key(request: request) -> bool:
     """
     Check if the API key is valid.
+    :param reqest: The request object from Quart
     """
     api_key = request.args.get('api_key')
     if api_key != os.environ.get('API_KEY'):
@@ -27,6 +28,9 @@ def valid_api_key(reqest: request) -> bool:
 def get_latest():
     """
     This route returns the latest data from a specified table in the database.
+    :param table: The table to get the latest data from
+    :param shuttle: Whether to get the shuttle data
+    :return: The latest data from the specified table
     """
     if valid_api_key(request):
         # We have a valid API key, allow for custom SQL parameters (extract them here)
@@ -46,6 +50,9 @@ def get_latest():
 def get_yesterday():
     """
     This route returns yesterday's data from a specified table in the database.
+    :param table: The table to get yesterday's data from
+    :param shuttle: Whether to get the shuttle data
+    :return: Yesterday's data from the specified table
     """
     if valid_api_key(request):
         # We have a valid API key, allow for custom SQL parameters (extract them here)
@@ -66,6 +73,9 @@ def get_yesterday():
 def get_last_week():
     """
     This route returns data from the last week from a specified table in the database.
+    :param table: The table to get the data from
+    :param shuttle: Whether to get the shuttle data
+    :return: Data from the last week from the specified table
     """
     if valid_api_key(request):
         # We have a valid API key, allow for custom SQL parameters (extract them here)
@@ -86,7 +96,11 @@ def get_last_week():
 def get_average():
     """
     This route returns the average fullness of a specified day of the week for the current semester.
-    :return:
+    :param table: The table to get the average fullness from
+    :param day: The day of the week to get the average fullness for
+    :param time: The time to get the average fullness for
+    :param shuttle: Whether to get the shuttle data
+    :return: The average fullness of the specified day of the week for the current semester
     """
     if valid_api_key(request):
         # We have a valid API key, allow for custom SQL parameters (extract them here)
@@ -109,6 +123,9 @@ def get_average():
 def run_query():
     """
     This route runs a specified SQL query on the database and returns the results.
+    :param query: The SQL query to run
+    :param shuttle: Whether to get the shuttle data
+    :return: The results of the SQL query
     """
     if not valid_api_key(request):
         return jsonify({"error": "Invalid API Key"}), 401

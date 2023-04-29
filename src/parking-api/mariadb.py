@@ -8,12 +8,25 @@ import newrelic.agent
 logger = BotLog('api-mariadb')
 
 class Config:
+    """
+    Class for storing configuration information for the MariaDB database
+    """
     def __init__(self):
+        """
+        Initialize the Config class
+        """
         self.conn = None
         self.retry_connection()
 
     @newrelic.agent.background_task()
     def retry_connection(self, max_retries=3, delay=5):
+        """
+        Try and get a connection to the MariaDB database
+        and retry as needed. Enables async use of the db.
+        :param max_retries:
+        :param delay:
+        :return:
+        """
         retries = 0
         while retries < max_retries:
             try:
@@ -33,13 +46,23 @@ class Config:
                 retries += 1
 
         logger.error(f'Failed to connect to MariaDB host {getenv("DB_HOST")} after {max_retries} retries')
+
+        # If we can't connect, we can't do anything, so just kill the app
         self.__del__()
 
     def __del__(self):
+        """
+        Close the connection to the MariaDB database
+        :return:
+        """
         self.conn.close()
 
     @newrelic.agent.background_task()
     def get_cursor(self):
+        """
+        Get a cursor for the MariaDB database
+        :return:
+        """
         try:
             cursor = self.conn.cursor(dictionary=True)
         except Exception as e:
@@ -53,7 +76,16 @@ class Config:
 
     @newrelic.agent.background_task()
     def get_latest(self, table, shuttle=False):
+        """
+        Get the latest entry for each unique name.
+        Used by the /latest endpoint.
+        :param table:
+        :param shuttle:
+        :return:
+        """
         cursor = self.get_cursor()
+
+        # Determine the query to use based on whether we're looking at the shuttle or not
         cursor.execute(f'''
             WITH latest_time AS (
                 SELECT name, MAX(time) AS most_recent_time
@@ -81,7 +113,6 @@ class Config:
             ''')
         try:
             result = cursor.fetchall()
-            print(result)
         except Exception as e:
             logger.error(f'Could not get latest entry in {table}: {e}')
             return None
@@ -91,8 +122,15 @@ class Config:
 
     @newrelic.agent.background_task()
     def get_yesterday(self, table, shuttle=False):
+        """
+        Get the average fullness for each unique name for the previous day.
+        Used by the /yesterday endpoint.
+        :param table:
+        :param shuttle:
+        :return:
+        """
         cursor = self.get_cursor()
-        time_last_week = datetime.now() - timedelta(weeks=1)
+        # Determine the query to use based on whether we're looking at the shuttle or not
         query = f'''
             SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
             FROM `{table}`
@@ -131,8 +169,16 @@ class Config:
 
     @newrelic.agent.background_task()
     def get_last_week(self, table, shuttle=False):
+        """
+        Get the average fullness for each unique name for the previous week.
+        Used by the /last_week endpoint.
+        :param table:
+        :param shuttle:
+        :return:
+        """
         cursor = self.get_cursor()
 
+        # Determine the query to use based on whether we're looking at the shuttle or not
         query = f'''
             SELECT CONCAT(CEILING(AVG(fullness)), '%') AS avg_fullness, name
             FROM `{table}`
@@ -172,7 +218,17 @@ class Config:
 
     @newrelic.agent.background_task()
     def get_average(self, table, day, time, shuttle=False):
+        """
+        Get the average fullness for each unique name for the given day and time.
+        Used by the /average endpoint.
+        :param table:
+        :param day:
+        :param time:
+        :param shuttle:
+        :return:
+        """
         cursor = self.get_cursor()
+        # Determine the query to use based on whether we're looking at the shuttle or not
         query = f"""
             SELECT name, CONCAT(CEILING(AVG(fullness)), '%') AS fullness
             FROM `{table}`
@@ -215,6 +271,12 @@ class Config:
 
     @newrelic.agent.background_task()
     def run_query(self, sql_query):
+        """
+        Run a query on the database.
+        Used by the /query endpoint.
+        :param sql_query:
+        :return:
+        """
         cursor = self.get_cursor()
         cursor.execute(sql_query)
         try:
