@@ -1,6 +1,6 @@
 import discord
 from os import getenv
-from utils import call_completion_api, call_parking_api, convert_schedule
+from utils import call_completion_api, call_parking_api, convert_schedule, get_funny
 from discord_log import BotLog
 from discord.ext import commands
 import newrelic.agent
@@ -8,7 +8,6 @@ import newrelic.agent
 newrelic.agent.initialize('/app/newrelic.ini')
 # Remove these when you remove call_parking_api
 
-# Replace 'your_bot_token' with your actual bot token
 TOKEN = getenv('DISCORD_TOKEN')
 logger = BotLog('discord-bot')
 
@@ -22,32 +21,50 @@ bot = commands.Bot(command_prefix='$', intents=intents)
 
 @bot.event
 async def on_ready():
+    """
+    Log that the bot is ready and connected
+    Can be called multiple times whenver the bot reconnects or shard gets replaced or
+    something? it's unclear.
+    :return:
+    """
     logger.info('Bot is ready and connected.')
 
 @newrelic.agent.background_task()
 @bot.event
 async def on_message(message):
+    """
+    Handle messages sent to the bot
+    :param message:
+    :return:
+    """
     # Ignore messages from the bot itself
     if message.author == bot.user:
         return
 
+    # A simple ping pong to see if the bot is responding at all, before any other branches
     if message.content.lower().startswith('ping?'):
         logger.info(f'Ping? Pong! received from {message.author} in {message.channel}')
         await message.reply('pong!')
         return
 
+    # We should be getting a command here to go to the answer_chain
     if bot.user in message.mentions:
+
+        # Check if the message is in the correct channel category
         if message.channel.category_id != 1099892029523247246:
             await message.reply("Please use the 'ParkingSucks GPT Bot' categories for getting parking information.")
             return
         content = message.content.replace(f'<@!{bot.user.id}>', '', 1).lstrip()
+
+        # Check if the message is too long
         if len(content) > 500:
             await message.reply("Sorry, that message is too long. Try making your message shorter and asking more than one message to get the information you need.")
             return
 
+        # This is the big one, we're sending everything and getting an exact anser back
         response = await call_completion_api(str(message.author), content, str(message.channel.name), message.id, message.author.id)
         if 'error' in response:
-            await message.reply("Sorry, that didn't work")
+            await message.reply(f"Internal Error: {get_funny()}\n<@320988843677581333>")
         else:
             await message.reply(response)
     if 'convert-schedule' in message.channel.name:

@@ -7,6 +7,9 @@ from os import getenv, path, makedirs
 # Standard logging class for all microservices
 
 class BotLog:
+    """
+    Class for logging to file and console
+    """
     def __init__(self, logger_name: str) -> None:
         self.log_level = getenv("LOG_LEVEL", "INFO")
         self.logger = getLogger(logger_name)
