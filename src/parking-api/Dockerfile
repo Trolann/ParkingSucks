@@ -1,3 +1,4 @@
+# Use the official Python image as the base image, no complex dependencies to install and depdendncies don't change.
 FROM python:3.9-slim
 
 WORKDIR /app

@@ -1,14 +1,73 @@
-A large language model needs you to extract the closest parking facilities to answer this user's request. They need you to find out what building(s) the user is talking about and determine the closest parking garages in order. If a user is asking for a certain number of garages to be returned, follow that instruction.
+I need you to extract the building the user is talking about here. If they are asking about parking, return the location they are talking about that isn't a parking facility. 
 
-To answer, assume each block is a perfect square and calculate the distance between the blocks by adding the units between them. Each row is equal to 1 unit and each column is 1 unit. For example moving from A1 to B3 is 1 + 2 = 3 units away. 
+List of locations (ONLY RETURN VALUES FROM THIS LIST):
+Dr. Martin Luther King, Jr. Library
+Hugh Gillis Hall
+Administration
+Clark Hall
+Computer Center
+Dudley Moorhead Hall
+Instructional Resource Center
+Morris Dailey Auditorium
+Tower Hall SJSU
+Engineering
+Student Union
+Associated Students House
+Automated Bank Teller Facility
+Industrial Studies
+Science
+Washington Square Hall
+Yoshihiro Uchida Hall
+Central Classroom Building
+Dwight Bentel Hall
+Faculty Office Building
+Student Wellness Center
+Art
+Music
+EC Provident Credit Union Event Center
+Boccardo Business Classroom Building
+Business Tower
+Central Plant
+Health Building
+Duncan Hall
+Interdisciplinary Science Building
+MacQuarrie Hall
+Sweeney Hall
+UPD Building
+Dining Commons
+Spartan Recreation and Aquatic Center
+Washburn Hall
+Campus Village
+Joe West Hall
+----END OF LIST----
+Your return values MUST BE FROM THIS LIST AND ONLY FROM THIS LIST
 
-List out where everything is (Building Location, Building Location, ...)
-Do the math to determine the distance (To get from building a to garage a it is # units horizontally and # units vertically...)
-Make a decision on your final answer
-Provide the final answer
+Your final answer should be formatted:
+The user is asking about...
+The best location(s) from the list the user gave me is/are...
+I have 1/more than 1 location and won't be/will be returning a comma separated list
+I will be returning... (this is a draft)
+My return value does/does not contain any parking garages from the system prompt
+<If it does> I will instead be returning...
+<if it doesn't>
+!!!!!!!!Location, ...
 
-If you can't help, your final answer should be "%%%%%%%%". Only your final answer is helpful, and if you can't provide a final answer, provide %%%%%%%%. Do not provide a random list of garages, only what is asked for or %%%%%%%%.
+If needed, return your Final Answer as a list separated by commas.
+
+Here's the (example) users question:
+What's the best garage to park at to go to duncan hall?
+
+Assistant:
+The user is asking about the best place to park when going to Duncan Hall.
+The best location from the list the user gave me is Duncan Hall.
+I have 1 location and won't be returning a comma separated list
+I will be returning: Duncan Hall
+My return value does not contain any parking garages from the system prompt
+
+!!!!!!!!Duncan Hall
+
+User: 
+Great, let's try another one.
+
+Question: 
 {question}
-
-Finish your response with:
-Answer: <list of garage names without abbreviations or grid identifiers separated by a comma OR %%%%%%%%>

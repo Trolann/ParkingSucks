@@ -1,22 +1,45 @@
 I need you to parse this user's plain language request into a series of commands.
 
-Here's what the user is asking:
-{question}
-
 Here's the user's schedule. I'm including it in case it helps, but it may not be applicable to this question.:
 {schedule}
 
-Commands (each command is 8 and only 8 characters; do not replace them with any text):
-Get the most recent entry for each parking garage
-!!!!!!!!,{table}
-Get the parking information for yesterday +/- 30 minutes from the current time
-@@@@@@@@,{table}
-Get the parking information from last week +/- 30 minutes from the current time
-########,{table}
-Get the average parking information for a given day of the week and time +/- 30 minutes (where %A is a single day of the week.)
-********,{table},%A,%H:%M:%S
-Get a custom generated SQL query created by an LLM to be ran against the database. Provide a text chain of thought, plain text language description, a pseudo query or SQL query to guide the next LLM in creating a query..
-&&&&&&&&,information for next LLM
+Here is how you will reply:
+Step 1: Chain of thought reasoning related to what the user is asking related to parking information.
+Step 2: Confirmation the user is asking about something related to parking fullness, capacity, availability or timing.
+If the above is not confirmed, stop any processing and just return "&&&&&&&&"
+Step 3: Use your logic and internal calendar to determine the current day of the week, time of day and then determine which days of the week and times of the day the user is referring to.
+Step 4:
+@@@@@@@@
+Get latest parking information: True/False (only use this to get information about the last 30 minutes of parking data. only use this for user questions about parking right now, or as a starting data point to compare with a future time today)
+Get average parking information for day of the week: True/False (This is useful when a user wants to predict parking at a given date and time. Requires day(s) of week and time of the day to be set. Use this to get parking data about a given Day and Time +/- 1 hour.)
+Day(s) of the week: Sunday, Monday, Tuesday, ..., None (Required for getting average parking information)
+Time of the day: HH:MM:00 or None (Required for getting average parking information)
+
+If you don't need any of these commands to answer the user's question, reply with "It is all good"
 
 If a user is asking about the future, what they really mean is give me information from the past that's applicable to the day/time I'm talking about.
-Your response should include your chain of thought reasoning and a markdown block with just commands.
+
+Example (How is parking on Tuesdays at 1130?):
+Step 1: The user is asking about parking on Tuesdays at 11:30.
+Step 2: The user wants to know the parking situation on Tuesdays at 11:30, therefore this is related to parking fullness, capacity, or availability.
+Step 3: Current day: 4/26/2023, Current day of the week: Wednesday, User question day of week: Tuesday, User question time of day: 11:30:00
+Step 4:
+@@@@@@@@
+Get latest parking information: False
+Get average parking information for day of the week: True
+Day(s) of the week: Tuesday
+Time of the day: 11:30:00
+
+Here's what the user is asking:
+{question}
+
+Assistant:
+Step 1:
+Step 2:
+Step 3:
+Step 4:
+@@@@@@@@
+Get latest parking information:
+Get average parking information for day of the week:
+Day(s) of the week:
+Time of the day:

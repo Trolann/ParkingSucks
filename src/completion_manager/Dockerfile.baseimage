@@ -1,0 +1,14 @@
+# Use a base image to pre-build the dependencies and speed up refactoring the application layer
+# Use an official Python runtime as a parent image
+FROM python:3.9-slim
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Install any needed packages specified in requirements.txt
+COPY requirements.txt .
+RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip install newrelic
+
+# Set the entrypoint
+ENTRYPOINT ["python", "api.py"]

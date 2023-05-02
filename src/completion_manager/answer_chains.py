@@ -1,4 +1,5 @@
-from utils import get_prompt, archive_completion, logger, send_reply, get_funny
+from final_answer import get_final_answer
+from utils import get_prompt, archive_completion, logger, find_nearest_parking
 from parking_chains import parking_chain
 from os import getenv
 from langchain.chat_models import ChatOpenAI
@@ -9,9 +10,11 @@ import asyncio
 # Set up the chat model
 chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),
-    temperature=0.7
+    temperature=0.7,
+    timeout=35
     )
 
+application = newrelic.agent.register_application(timeout=10.0)
 @newrelic.agent.background_task()
 async def answer_chain(username, question, message_id, user_id, memory, gpt4=False) -> str:
     """
@@ -40,8 +43,12 @@ async def answer_chain(username, question, message_id, user_id, memory, gpt4=Fal
 
     parking_info = parking_info_future
     map_info = map_info_future
-
-    return await get_final_answer(question=question, schedule=parking_info, closest_garages=map_info, gpt4=gpt4)
+    if '%%%%%%%%' in map_info:
+        map_info = 'We were unable to extract any on-campus locations the user is talking about. Do not attempt to make up distances or use your knowledge of the location to determine closeness.'
+    else:
+        map_info = f'Here are the disatnces to each garage from the location(s) the user is talking about: {map_info}'
+    final_answer = await get_final_answer(question=question, schedule=parking_info, closest_garages=map_info, gpt4=gpt4)
+    return final_answer
 
 
 @newrelic.agent.background_task()
@@ -53,14 +60,33 @@ async def map_chain(question, schedule, gpt4=False):
     :param gpt4:
     :return:
     """
+    logger.info(f'Starting map chain for: {question}')
     question = await get_prompt(question, 'map')
-    chat.model_name = "gpt-3.5-turbo" if not gpt4 else "gpt-4"
+    old_model_temp = chat.temperature
+    chat.model_name = "gpt-3.5-turbo"# if not gpt4 else "gpt-4"
+    chat.temperature = 0.2
     map_response = chat(question.to_messages())
-    # Extract just the text after ":"
-    map_response = map_response.content.split(':')[-1]
-    #map_response = map_response.content.split('Final Answer: ')[-1]
     logger.info(f'Got map response: {map_response}')
-    return map_response
+    chat.temperature = old_model_temp
+    if '@@@@@@@@' in map_response.content:
+        logger.info(f'No map response needed for: {question}')
+        return '%%%%%%%%'
+    # Extract just the text after ":"
+    map_response = map_response.content.split('!!!!!!!!')[-1]
+    logger.info(f'Got map response: {map_response}')
+    # Check if there is a comma in the string
+    if "," in map_response:
+        # Split the string using the comma and strip any extra whitespace
+        map_response_list = [item.strip() for item in map_response.split(',')]
+    else:
+        # If there is no comma, create a list with the single item
+        map_response_list = [map_response]
+
+    tables = ''
+    for loc in map_response_list:
+        tables += await find_nearest_parking(loc) + '\n'
+
+    return tables
 @newrelic.agent.background_task()
 async def passed_moderation(query: str) -> bool:
     """
@@ -135,24 +161,6 @@ async def complete_gpt_moderation(query, username) -> int:
         logger.error(f'Unable to determine safety of query: {query}')
     return 0
 
-@newrelic.agent.background_task()
-async def get_final_answer(question, schedule, closest_garages, gpt4=False) -> str:
-    """
-    This function gets all the available information and forms a response which will
-    go directly to the user.
-    :param question:
-    :param schedule:
-    :param closest_garages:
-    :param gpt4:
-    :return:
-    """
-    logger.info(f'Getting final answer for question: {question}')
-    question = await get_prompt(question, 'final', schedule=schedule, closest_garages=closest_garages)
-    chat.model_name = "gpt-3.5-turbo" if not gpt4 else "gpt-4"
-    response = chat(question.to_messages()).content
-
-    await archive_completion(question.to_messages(), response)
-    return response
 
 @newrelic.agent.background_task()
 async def schedule_summarizer(schedule) -> str:

@@ -8,6 +8,8 @@ import requests
 from os import getenv
 from random import choice
 from time import sleep
+from pytz import timezone
+from Levenshtein import distance as levenshtein_distance
 
 from langchain.prompts import (
     ChatPromptTemplate,
@@ -38,7 +40,11 @@ async def get_prompt(question, prompt_type, **kwargs):
 
     # Get the current date and time in the specified format
     now = datetime.now()
-    formatted_datetime = now.strftime("%A, %B %-d %Y %H:%M:%S")
+    # Convert the datetime to Pacific Time (PT)
+    pt_timezone = timezone('America/Los_Angeles')
+    pt_now = now.astimezone(pt_timezone)
+
+    formatted_datetime = pt_now.strftime("%A, %B %-d %Y %H:%M:%S")
 
     # Add the 'datetime' kwarg if it's not provided
     kwargs.setdefault('datetime', formatted_datetime)
@@ -170,3 +176,110 @@ def get_funny():
     "Analyzing your request like a quantum computer, just without the quantum bit errors."
     ]
     return choice(funny_list)
+
+LOCATIONS = {
+    "North Parking Facility": ("A4", "Q4"),
+    "Dr. Martin Luther King, Jr. Library": ("B1", "Q1"),
+    "Hugh Gillis Hall": ("B1", "Q2"),
+    "Administration": ("B2", "Q2"),
+    "Clark Hall": ("B2", "Q4"),
+    "Computer Center": ("B2", "Q3"),
+    "Dudley Moorhead Hall": ("B2", "Q1"),
+    "Instructional Resource Center": ("B2", "Q1"),
+    "Morris Dailey Auditorium": ("B2", "Q3"),
+    "Tower Hall SJSU": ("B2", "Q3"),
+    "Engineering": ("B3", "Q1"),
+    "Student Union": ("B3", "Q4"),
+    "Associated Students House": ("B4", "Q4"),
+    "Automated Bank Teller Facility": ("B4", "Q3"),
+    "Industrial Studies": ("B4", "Q1"),
+    "Science": ("C1", "Q1"),
+    "Washington Square Hall": ("C1", "Q1"),
+    "Yoshihiro Uchida Hall": ("C1", "Q3"),
+    "Central Classroom Building": ("C2", "Q2"),
+    "Dwight Bentel Hall": ("C2", "Q1"),
+    "Faculty Office Building": ("C2", "Q1"),
+    "Student Wellness Center": ("C2", "Q4"),
+    "Art": ("C3", "Q2"),
+    "Music": ("C3", "Q1"),
+    "EC Provident Credit Union Event Center": ("C3", "Q3"),
+    "Boccardo Business Classroom Building": ("C4", "Q2"),
+    "Business Tower": ("C4", "Q2"),
+    "Central Plant": ("C4", "Q4"),
+    "Health Building": ("C4", "Q3"),
+    "Duncan Hall": ("D1", "Q3"),
+    "Interdisciplinary Science Building": ("D1", "Q3"),
+    "West Parking Facility": ("D1", "Q1"),
+    "MacQuarrie Hall": ("D2", "Q1"),
+    "South Parking Facility": ("D2", "Q1"),
+    "Sweeney Hall": ("D2", "Q2"),
+    "UPD Building": ("D2", "Q4"),
+    "Dining Commons": ("D3", "Q4"),
+    "Spartan Recreation and Aquatic Center": ("D3", "Q1"),
+    "Washburn Hall": ("D3", "Q3"),
+    "Campus Village": ("D4", "Q2"),
+    "Joe West Hall": ("D4", "Q3")
+}
+
+async def find_nearest_parking(location_name, locations=LOCATIONS):
+    parking_facilities = {
+        "North Parking Facility": ("A4", "Q4"),
+        "South Parking Facility": ("D2", "Q1"),
+        "West Parking Facility": ("D1", "Q1"),
+    }
+
+    def closest_key_match(parking_dict, search_string):
+        search_words = search_string.split()
+        min_distance = float('inf')
+        closest_key = None
+        logger.info(f'Finding closest key for {search_string}')
+        for key in parking_dict.keys():
+            key_words = key.split()
+            for search_word, key_word in zip(search_words, key_words):
+                dist = levenshtein_distance(key_word, search_word)
+
+                if dist < min_distance:
+                    min_distance = dist
+                    closest_key = key
+
+        return closest_key
+
+    def parse_location(loc_string, quadrant_string):
+        row, col = ord(loc_string[0]) - ord('A'), int(loc_string[1]) - 1
+        quadrant = int(quadrant_string[1]) - 1
+        x = col * 2 + quadrant % 2
+        y = row * 2 + quadrant // 2
+        return x, y
+
+    def distance(location1, location2, exact_match=False):
+        location1 = closest_key_match(locations, location1)
+        location2 = closest_key_match(parking_facilities, location2)
+        if not location1 or not location2:
+            return float('inf')
+
+        x1 = x2 = y1 = y2 = float(0)
+        try:
+            x1, y1 = parse_location(*locations[location1])
+        except KeyError:
+            if exact_match:
+                return float('inf')
+
+        try:
+            x2, y2 = parse_location(*parking_facilities[location2])
+        except KeyError:
+            if exact_match:
+                return float('inf')
+
+        dist = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+        return round(dist, 3) if dist > 0 else float(5000)
+
+    distances = [{"name": facility, "distance": distance(location_name, facility)} for facility in parking_facilities]
+    distances.sort(key=lambda x: x["distance"])
+
+    data_line = f"Data above is distances from {location_name}"
+    distances.append({"name": data_line, "distance": 0.0})
+
+    pretty_table = await make_pretty([distances])
+    return pretty_table
+
+
