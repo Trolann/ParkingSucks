@@ -54,23 +54,21 @@ Assume all code generated fully, mostly or in part by GPT3.5 or GPT4. Exact prom
 
 ## Sequence Diagram
 ```
-User              Discord             ParkingSucksBot             CompletionAPI           ModerationEP                    GPT               Parking-API
- |                    |                    |                          |                         |                          |                     |
- |-------Log in------>|                    |                          |                         |                          |                     |
- |---Ask question---->|                    |                          |                         |                          |                     |
- |                    |-Forwards question->|                          |                         |                          |                     |
- |                    |                    |----Call CompletionAPI--->|                         |                          |                     |
- |                    |                    |                          |-->Validate API Key      |                          |                     |
- |                    |                    |                          |<-----------------|      |                          |                     |
- |                    |                    |                          |------Check Moderation-->|                          |                     |
- |                    |                    |                          |------------------Generate SQL Query--------------> |                     |
- |                    |                    |                          |<----------------Return SQL query-------------------|                     |
- |                    |                    |                          |-------------------------------Run SQL Query----------------------------->|
- |                    |                    |                          |<-----------------------------Return query results------------------------|
- |                    |                    |                          |--------------Generate final answer string--------->|                     |
- |                    |                    |                          |<------------Return answer String-------------------|                     |
- |                    |                    |<--Return answer via API--|                         |                          |                     |
- |                    |<--Display Answer---|                          |                         |                          |                     |
++---------------------------------------------------------------------------------------------------------------------------------------------------+
+|/completion                              OpenAI                                                                                OpenAI      OpenAI  |
+|endpoint           Answer Chain        Moderation      Map Chain      Parking Chain      Parking API         MariaDB           GPT-3       GPT-4   |
+|      |------AuthN------>|                 |               |                |                  |                |                |           |     |
+|      |                  |                 |               |                |                  |                |                |           |     |
+|      |                  |<----Content---->|               |                |                  |                |                |           |     |
+|      |                  |<----------------------------------GPT moderation/content/logic check--------------------------------->|           |     |
+|      |                  |<--Determine garage distances--->|<---------------Extract location from natural language-------------->|           |     |
+|      |                  |-------Get parking fullness, shuttle times------->|                  |                |                |           |     |
+|      |                  |                 |               |                |<-----Extract API calls from natrual language------>|           |     |
+|      |                  |                 |               |                |<------Call------>|<---Read only---|                |           |     |
+|      |                  |<-----------Return table of relevant parking information-------------|                |                |           |     |
+|      |                  |<------------Use known user data, parking information, location to garage distances and form an answer------------>|     |
+|      |<-Return to user--|                 |               |                |                  |                |                |           |     |
++---------------------------------------------------------------------------------------------------------------------------------------------------+
 ```
 
 ## Prompts
