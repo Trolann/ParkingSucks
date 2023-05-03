@@ -9,7 +9,7 @@ This repo contains 4 micro-services:
 Assume all code generated fully, mostly or in part by GPT3.5 or GPT4. Exact prompts used to generate or modify code will be added at a later date.
 
 ## Component Diagram
-````
+```
        +-----------------------------------------+                                                                                                                           
        |   DigitalOcean Droplet: Wordpress       |                                            +----------------------------------------------------+                         
        |                                         |                                            | External Services                                  |                         
