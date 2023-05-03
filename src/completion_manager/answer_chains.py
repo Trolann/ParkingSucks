@@ -30,6 +30,8 @@ async def answer_chain(username, question, message_id, user_id, memory, gpt4=Fal
     """
     # Complete GPT driven moderation
     schedule = memory.get_schedule(username)
+
+    # This does moderation, gets parking data and gets location data at the same time. This is low cost
     is_ok_future, parking_info_future, map_info_future = await asyncio.gather(
         complete_gpt_moderation(await get_prompt(question, 'ok'), username),
         parking_chain(question, schedule=schedule, gpt4=gpt4),
@@ -43,10 +45,14 @@ async def answer_chain(username, question, message_id, user_id, memory, gpt4=Fal
 
     parking_info = parking_info_future
     map_info = map_info_future
+
+    # Bad day
     if '%%%%%%%%' in map_info:
         map_info = 'We were unable to extract any on-campus locations the user is talking about. Do not attempt to make up distances or use your knowledge of the location to determine closeness.'
-    else:
+    else: # Good day
         map_info = f'Here are the disatnces to each garage from the location(s) the user is talking about: {map_info}'
+
+    # Take all the data and get the final answer
     final_answer = await get_final_answer(question=question, schedule=parking_info, closest_garages=map_info, gpt4=gpt4)
     return final_answer
 
@@ -61,20 +67,27 @@ async def map_chain(question, schedule, gpt4=False):
     :return:
     """
     logger.info(f'Starting map chain for: {question}')
+
+    # Get the question to feed to the model
     question = await get_prompt(question, 'map')
+
+    # Temperature 0.2 leads to less hallucinations
     old_model_temp = chat.temperature
     chat.model_name = "gpt-3.5-turbo"# if not gpt4 else "gpt-4"
     chat.temperature = 0.2
     map_response = chat(question.to_messages())
     logger.info(f'Got map response: {map_response}')
+    # Cleanup
     chat.temperature = old_model_temp
+
+    # This is likely for 'how's parking right now' or 'where can disabled people park'
     if '@@@@@@@@' in map_response.content:
         logger.info(f'No map response needed for: {question}')
         return '%%%%%%%%'
-    # Extract just the text after ":"
+    # Extract just the text after "!!!!!!!!"
     map_response = map_response.content.split('!!!!!!!!')[-1]
     logger.info(f'Got map response: {map_response}')
-    # Check if there is a comma in the string
+    # Check if there is a comma in the string (multiple locations)
     if "," in map_response:
         # Split the string using the comma and strip any extra whitespace
         map_response_list = [item.strip() for item in map_response.split(',')]
@@ -143,17 +156,17 @@ async def complete_gpt_moderation(query, username) -> int:
 
     # Safe
     if '!!!!!!!!' in response:
-        logger.info(f'Found a safe query')
+        logger.info(f'Found a safe qestion from {username}')
         return 1
 
     # Not sure
     if '########' in response:
-        logger.info(f'Found an unsure query')
+        logger.info(f'Found an unsure qestion from {username}')
         return 2
 
     # Unsafe
     if '@@@@@@@@' in response:
-        logger.critical(f"UNSAFE QUERY DETECTED from {username}")
+        logger.critical(f"UNSAFE QUESTION DETECTED FROM {username}:\n {query}")
         return 0
 
     # Unable to parse

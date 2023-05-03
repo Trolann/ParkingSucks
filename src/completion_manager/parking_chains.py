@@ -32,10 +32,11 @@ async def parking_chain(question, schedule=None, gpt4=False) -> str:
         logger.info(f'Got commands: {commands}')
         commands_list = extract_commands(commands)
         logger.info(f'Extracted commands {commands_list}.')
+        # Call the Parking API
         output = await execute_commands(commands_list)
-        logger.info(f'Got parking data: {type(output[0])}')
+        logger.info(f'Got parking data: {output[0]}')
 
-        # Cleanup the response
+        # Cleanup the response into a table
         try:
             pretty = await make_pretty(output)
             logger.info(f'Got  pretty output.')
@@ -81,6 +82,7 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
 
 @newrelic.agent.background_task()
 def extract_commands(text):
+    # Likely for questions like 'Where can I charge my car?'
     if "It is all good" in text:
         return []
 
@@ -114,6 +116,7 @@ async def execute_commands(commands):
 
     output = []
 
+    # Individual try/catch because the model may only screw up one extraction
     try:
         if commands.get("latest") == "True":
             response = await call_parking_api(endpoint="latest")
@@ -122,6 +125,7 @@ async def execute_commands(commands):
         logger.error(f'Error executing get_latest from command executor: {e}')
         return 'There was an error getting the latest data.'
 
+    # Likely called every time, multiple times
     try:
         if commands.get("average") == "True":
             days = commands.get("days")
@@ -145,20 +149,18 @@ async def execute_commands(commands):
 async def call_parking_api(endpoint=None, table='sjsu', day=None, time=None) -> list:
     payload = {
         "api_key": getenv("PARKING_API_KEY"),
-        "endpoint": endpoint
+        "endpoint": endpoint,
+        "table": table
     }
+    # Make sure it's valid to get the average
+    if day and time:
+        payload["day"] = day
+        payload["time"] = time
+    elif day or time: # Only here if not and
+        logger.error(f"Invalid day or time: {day}, {time}")
+        return list('')
 
     try:
-        if table:
-            payload["table"] = table
-
-        if day and time:
-            payload["day"] = day
-            payload["time"] = time
-        elif day or time:
-            logger.error(f"Invalid day or time: {day}, {time}")
-            return list('')
-
         url = f"{getenv('PARKING_API_URL')}/{endpoint}"
         async with aiohttp.ClientSession() as session:
             parking_info = "I couldn't get any parking information. Tell the user to try and ask in a different way."
@@ -180,6 +182,11 @@ async def call_parking_api(endpoint=None, table='sjsu', day=None, time=None) -> 
         return list('')
 @newrelic.agent.background_task()
 def adjust_day(day):
+    """
+    Adjusts the day to the correct format for the API
+    :param day:
+    :return:
+    """
     day_mapping = {
         'M': 'Monday',
         'T': 'Tuesday',
@@ -228,6 +235,11 @@ def adjust_day(day):
 
 @newrelic.agent.background_task()
 def adjust_time(time):
+    """
+    Adjusts the time to the correct format for the API
+    :param time:
+    :return:
+    """
     logger.info(f'Adjusting time: {time}')
     try:
         return datetime.strptime(time, "%H:%M:%S").strftime("%H:%M:%S")

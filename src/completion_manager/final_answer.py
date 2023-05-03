@@ -3,6 +3,8 @@ from os import getenv
 from langchain.chat_models import ChatOpenAI
 from utils import logger, get_prompt, archive_completion
 
+#TODO: Put back in answer_chains; this is broken out just for debugging the newrelic buffoonery
+
 chat = ChatOpenAI(
     openai_api_key=getenv('OPENAI_API_KEY'),
     temperature=0.7,
