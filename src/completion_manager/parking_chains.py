@@ -77,7 +77,7 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
     logger.debug(f'Got command response: {command_text}')
 
     await archive_completion(question.to_messages(), command_text)
-    logger.info(f'Got list of commands for question: {question}')
+    logger.info(f'Got list of commands: {command_text}')
 
     return command_text
 
@@ -138,7 +138,9 @@ async def execute_commands(commands):
             days_list = [adjust_day(day) for day in days.split(',')] if days != "None" else None
             time = commands.get("time")
             adjusted_time = adjust_time(time) if time != "None" else None
-
+            if not days_list or not adjusted_time:
+                logger.error(f'Error getting average data for days: {days} and time: {time} from command executor.')
+                return 'There was an error executing the command'
             for day in days_list:
                 response = await call_parking_api(endpoint="average", day=day, time=adjusted_time)
                 logger.debug(f'Got response from parking API: {response}')

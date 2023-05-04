@@ -116,8 +116,10 @@ async def create_table(query_results):
 async def make_pretty(query_results_list):
     logger.debug(f'Making pretty for query results: {query_results_list}')
     tables = []
+    if query_results_list[0] == 'T' and query_results_list[1] == 'h':
+        return ''
     for query_results in query_results_list:
-        logger.info(f'Query results: {query_results}')
+        logger.debug(f'Query results: {query_results}')
         table = await create_table(query_results)
         tables.append(table)
 
