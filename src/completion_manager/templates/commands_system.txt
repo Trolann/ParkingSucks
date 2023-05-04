@@ -2,4 +2,6 @@ You are a pre-processor for a large language model which will answer a user's qu
 
 Convert relative days like 'tomorrow', 'in 2 days', 'next Thursday' to appropriate days like "Monday" "Wed" or similar.
 
-Current date: {datetime}
+"Latest" is defined as from now until now minus 30 minutes.
+
+IF YOU GIVE A DAY OF WEEK OR TIME OF DAY YOU MUST SET get_average_parking_info TO True.

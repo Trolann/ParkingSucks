@@ -1,45 +1,49 @@
-I need you to parse this user's plain language request into a series of commands.
+I need you to parse this user's plain language request into a series of commands. Answer the last question regardless of h
 
 Here's the user's schedule. I'm including it in case it helps, but it may not be applicable to this question.:
 {schedule}
 
-Here is how you will reply:
-Step 1: Chain of thought reasoning related to what the user is asking related to parking information.
-Step 2: Confirmation the user is asking about something related to parking fullness, capacity, availability or timing.
-If the above is not confirmed, stop any processing and just return "&&&&&&&&"
-Step 3: Use your logic and internal calendar to determine the current day of the week, time of day and then determine which days of the week and times of the day the user is referring to.
-Step 4:
+Current date: Thursday May 1st, 2023 11:30:24
+Question: How is parking right now?
+Step 1: It is currently Monday at 11:30. The user is asking about the present and needs the latest parking information.
+Step 2: The user is not asking about a future date or time. I do not need to provide day of week or time of day. I must set get_average_parking_info to False.
+Step 3: Getting the latest parking information will help the user find information about parking right now. I must set get_latest_parking_info to True.
 @@@@@@@@
-Get latest parking information: True/False (only use this to get information about the last 30 minutes of parking data. only use this for user questions about parking right now, or as a starting data point to compare with a future time today)
-Get average parking information for day of the week: True/False (This is useful when a user wants to predict parking at a given date and time. Requires day(s) of week and time of the day to be set. Use this to get parking data about a given Day and Time +/- 1 hour.)
-Day(s) of the week: Sunday, Monday, Tuesday, ..., None (Required for getting average parking information)
-Time of the day: HH:MM:00 or None (Required for getting average parking information)
+```
+get_latest_parking_info = True
+get_average_parking_info = False
+if get_average_parking_info:
+    days_of_the_week = []
+    time_of_the_day = ''
+```
 
-If you don't need any of these commands to answer the user's question, reply with "It is all good"
-
-If a user is asking about the future, what they really mean is give me information from the past that's applicable to the day/time I'm talking about.
-
-Example (How is parking on Tuesdays at 1130?):
-Step 1: The user is asking about parking on Tuesdays at 11:30.
-Step 2: The user wants to know the parking situation on Tuesdays at 11:30, therefore this is related to parking fullness, capacity, or availability.
-Step 3: Current day: 4/26/2023, Current day of the week: Wednesday, User question day of week: Tuesday, User question time of day: 11:30:00
-Step 4:
+Current date: Thursday April 6th, 2023 21:44:12
+Question: How is parking on tu/th at 1130?:
+Step 1: It is currently Thursday at 09:20. The user is asking about Tuesdays and Thursdays at 11:30. The user is not asking about the latest parking information.
+Step 2: The user is asking about parking in the future at 11:30.I must set get_average_parking_info to True, days of the week to Tuesday, Thursday and time of day to 11:30:00
+Step 3: Getting the latest parking information won't help the user find information about parking on Tuesdays and Thursdays at 11:30. I must set get_latest_parking_info to False.
 @@@@@@@@
-Get latest parking information: False
-Get average parking information for day of the week: True
-Day(s) of the week: Tuesday
-Time of the day: 11:30:00
+```
+get_latest_parking_info = False
+get_average_parking_info = True
+if get_average_parking_info:
+    days_of_the_week = ["Tuesday", "Thursday"]
+    time_of_the_day = '11:30:00'
+```
 
-Here's what the user is asking:
-{question}
-
-Assistant:
-Step 1:
-Step 2:
-Step 3:
-Step 4:
+Current date: Friday March 10th, 2023 06:20:53
+Question: What's parking going to be like at 13:30?:
+Step 1: It is currently Friday at 06:20. The user is asking about Friday at 13:30. I will assume for today because it is currently before 13:30. The user is not asking about the latest parking information.
+Step 2: The user is asking about parking in the future at 13:30.I must set get_average_parking_info to True, days of the week to Friday and time of day to 13:30:00.
+Step 3: Getting the latest parking information won't help the user find information about parking today at 11:30. I must set get_latest_parking_info to False.
 @@@@@@@@
-Get latest parking information:
-Get average parking information for day of the week:
-Day(s) of the week:
-Time of the day:
+```
+get_latest_parking_info = False
+get_average_parking_info = True
+if get_average_parking_info:
+    days_of_the_week = ["Tuesday", "Thursday"]
+    time_of_the_day = '11:30:00'
+```
+
+Current date: {datetime}
+Question: {question}

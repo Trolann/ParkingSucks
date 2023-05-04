@@ -72,7 +72,10 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
 
     # Get the commands
     chat.model_name = "gpt-3.5-turbo"# if not gpt4 else "gpt-4"
+    old_temp = chat.temperature
+    chat.temperature = 0.2
     command_response = chat(question.to_messages())
+    chat.temperature = old_temp
     command_text = command_response.content
     logger.debug(f'Got command response: {command_text}')
 
@@ -83,32 +86,40 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
 
 @newrelic.agent.background_task()
 def extract_commands(text):
-    # Likely for questions like 'Where can I charge my car?'
-    if "It is all good" in text:
-        logger.debug(f'No commands to extract in text: {text}')
-        return []
-
-    command_patterns = {
-        "latest": r"Get latest parking information: (True|False)",
-        "average": r"Get average parking information for day of the week: (True|False)",
-        "days": r"Day\(s\) of the week: ([\w,]+|None)",
-        "time": r"Time of the day: (\d{2}:\d{2}:\d{2}|None)"
+    result = {
+        'latest': None,
+        'average': None,
+        'days': [],
+        'time': None
     }
 
-    extracted_commands = {}
+    lines = text.split("\n")
+    found_markdown = False
+    for line in lines:
+        if '```' in line:
+            found_markdown = True
+        if not found_markdown:
+            continue
+        stripped_line = line.strip()
 
-    try:
-        for command, pattern in command_patterns.items():
-            logger.debug(f'Extracting command: {command} with pattern: {pattern}')
-            match = re.search(pattern, text)
-            if match:
-                logger.info(f'Extracted command: {command} with value: {match.group(1)}')
-                extracted_commands[command] = match.group(1)
-    except Exception as e:
-        logger.error(f'Error extracting commands: {e}')
-        return []
+        if "get_latest_parking_info" in stripped_line:
+            result['latest'] = stripped_line.split(" = ")[-1] == "True"
 
-    return extracted_commands
+        elif "get_average_parking_info = " in stripped_line:
+            logger.info(f'Found average command: {stripped_line}')
+            logger.info(f'{stripped_line.split(" = ")[-1] == "True"}')
+            result['average'] = stripped_line.split(" = ")[-1] == "True"
+
+        elif "days_of_the_week" in stripped_line:
+            days_list = stripped_line.split(" = ")[-1]
+            days_list = days_list.strip("[]")
+            days_list = days_list.replace('"', '').replace("'", "")
+            result['days'] = [day.strip() for day in days_list.split(",") if day.strip()]
+
+        elif "time_of_the_day" in stripped_line:
+            result['time'] = stripped_line.split(" = ")[-1].strip("'").strip('"')
+
+    return result
 
 
 @newrelic.agent.background_task()
@@ -118,10 +129,10 @@ async def execute_commands(commands):
         return 'It is all good'
 
     output = []
-
+    logger.info(f'Executing commands: {commands}')
     # Individual try/catch because the model may only screw up one extraction
     try:
-        if commands.get("latest") == "True":
+        if commands.get("latest"):
             logger.info(f'Calling parking API for latest data.')
             response = await call_parking_api(endpoint="latest")
             logger.debug(f'Got response from parking API: {response}')
@@ -130,27 +141,32 @@ async def execute_commands(commands):
         logger.error(f'Error executing get_latest from command executor: {e}')
         return 'There was an error getting the latest data.'
 
+    logger.info(f'Got paste latest')
     # Likely called every time, multiple times
-    try:
-        if commands.get("average") == "True":
-            logger.info(f'Calling parking API for average data.')
-            days = commands.get("days")
-            days_list = [adjust_day(day) for day in days.split(',')] if days != "None" else None
-            time = commands.get("time")
-            adjusted_time = adjust_time(time) if time != "None" else None
-            if not days_list or not adjusted_time:
-                logger.error(f'Error getting average data for days: {days} and time: {time} from command executor.')
-                return 'There was an error executing the command'
-            for day in days_list:
-                response = await call_parking_api(endpoint="average", day=day, time=adjusted_time)
-                logger.debug(f'Got response from parking API: {response}')
-                output.append(response)
-    except Exception as e:
-        days = commands.get("days")
-        time = commands.get("time")
-        logger.critical(f'Error getting average data for days: {days} and time: {time} from command executor: {e}')
-        return 'There was an error executing the command'
 
+    if commands.get("average"):
+        logger.info(f'Calling parking API for average data.')
+        days = commands.get("days")
+        days_list = [adjust_day(day) for day in days] if days else None
+        logger.info(f'Days list: {days_list}')
+        time = commands.get("time")
+        logger.info(f'Time: {time}')
+        adjusted_time = adjust_time(time) if time != "None" else None
+        if not days_list or not adjusted_time:
+            logger.error(f'Error getting average data for days: {days} and time: {time} from command executor.')
+            return 'There was an error executing the command'
+        for day in days_list:
+            logger.debug(f'Calling parking API for average data for day: {day} and time: {adjusted_time}.')
+            try:
+                response = await call_parking_api(endpoint="average", day=day, time=adjusted_time)
+            except Exception as e:
+                days = commands.get("days")
+                time = commands.get("time")
+                logger.critical(f'Error getting average data for days: {days} and time: {time} from command executor: {e}')
+                return 'There was an error executing the command'
+            logger.debug(f'Got response from parking API: {response}')
+            output.append(response)
+    logger.info(f'Exiting gracefully')
     return output
 
 

@@ -92,11 +92,11 @@ if __name__ == '__main__':
             number_new += 1 if added_new else 0
         logger.info(f'Scraped {number_new} new garages.')
         # Wait for 5 minutes before running again
-        logger.info('Waiting 5 minutes before running again...')
+        logger.info('Waiting 1 minute before running again...')
 
         # Check on the shuttle thread and restart it if it needs to be.
         if not shuttle_thread.is_alive():
             logger.info('Shuttle scraper thread has crashed. Restarting it...')
             shuttle_thread = Thread(target=monitor_shuttle_statuses, args=(shuttles_db,), daemon=True)
             shuttle_thread.start()
-        sleep(60 * 5)
+        sleep(60 * 1)

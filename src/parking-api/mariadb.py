@@ -50,6 +50,7 @@ class Config:
         # If we can't connect, we can't do anything, so just kill the app
         self.__del__()
 
+
     def __del__(self):
         """
         Close the connection to the MariaDB database
@@ -92,7 +93,7 @@ class Config:
                 FROM `{table}`
                 GROUP BY name
             )
-            SELECT CONCAT(t.fullness, '%') AS fullness, lt.name
+            SELECT SQL_NO_CACHE CONCAT(t.fullness, '%') AS fullness, lt.name
             FROM latest_time lt
             JOIN `{table}` t ON lt.name = t.name AND lt.most_recent_time = t.time
             UNION ALL
@@ -104,7 +105,7 @@ class Config:
                 FROM `{table}`
                 GROUP BY stop_name
             )
-            SELECT CONCAT(t.time_to_departure, ' minutes') AS time_to_departure, lt.stop_name
+            SELECT SQL_NO_CACHE CONCAT(t.time_to_departure, ' minutes') AS time_to_departure, lt.stop_name
             FROM latest_time lt
             JOIN `{table}` t ON lt.stop_name = t.stop_name AND lt.most_recent_time = t.updated_at
             UNION ALL
@@ -117,6 +118,8 @@ class Config:
             logger.error(f'Could not get latest entry in {table}: {e}')
             return None
         num_results = len(result) if result else 0
+        self.conn.close()
+        #self.conn = None
         logger.info(f'Found {num_results} results for latest entry in {table}')
         return result
 
