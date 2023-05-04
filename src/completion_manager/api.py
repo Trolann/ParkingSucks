@@ -39,11 +39,11 @@ async def completion():
     # TODO: Take in model name as parameter
     gpt4 = False
     if 'gpt4' in channel:
-        logger.info(f'Using GPT4 for {username}')
+        logger.debug(f'Using GPT4 for {username}')
         gpt4 = True
 
     final_answer = await answer_chain(username, message, message_id=message_id, user_id=user_id, memory=memory, gpt4=gpt4)
-    logger.info(f'Got final answer: {final_answer} {type(final_answer)}')
+    logger.info(f'Got final answer for {username}: {final_answer} ')
 
     # Prepare response
     response = jsonify(final_answer)

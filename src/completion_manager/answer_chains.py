@@ -6,6 +6,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chains import OpenAIModerationChain
 import newrelic.agent
 import asyncio
+import re
 
 # Set up the chat model
 chat = ChatOpenAI(
@@ -30,10 +31,11 @@ async def answer_chain(username, question, message_id, user_id, memory, gpt4=Fal
     """
     # Complete GPT driven moderation
     schedule = memory.get_schedule(username)
-
+    logger.debug(f'Got schedule of length {len(schedule)} for {username}')
+    question = re.sub(r'<[^>]*>\s*', '', question)
     # This does moderation, gets parking data and gets location data at the same time. This is low cost
     is_ok_future, parking_info_future, map_info_future = await asyncio.gather(
-        complete_gpt_moderation(await get_prompt(question, 'ok'), username),
+        complete_gpt_moderation(question, username),
         parking_chain(question, schedule=schedule, gpt4=gpt4),
         map_chain(question, schedule=schedule, gpt4=gpt4),
     )
@@ -41,21 +43,64 @@ async def answer_chain(username, question, message_id, user_id, memory, gpt4=Fal
     # Assign a callback to process is_ok and decide whether to proceed with the final answer
     should_proceed, return_message = await process_is_ok(is_ok_future, username, question, memory)
     if not should_proceed:
+        logger.critical(f'Got a bad question from {username}: {question}')
         return return_message
 
     parking_info = parking_info_future
     map_info = map_info_future
+    logger.debug(f'Got parking info for {username}: {parking_info}')
+
 
     # Bad day
     if '%%%%%%%%' in map_info:
+        logger.error(f'Unable to get map info for {username}')
         map_info = 'We were unable to extract any on-campus locations the user is talking about. Do not attempt to make up distances or use your knowledge of the location to determine closeness.'
     else: # Good day
+        logger.debug(f'Got map info for {username}: {map_info}')
         map_info = f'Here are the disatnces to each garage from the location(s) the user is talking about: {map_info}'
 
     # Take all the data and get the final answer
     final_answer = await get_final_answer(question=question, schedule=parking_info, closest_garages=map_info, gpt4=gpt4)
+    logger.debug(f'Ending answer chain for {username} with final answer: {final_answer}')
     return final_answer
 
+
+@newrelic.agent.background_task()
+async def complete_gpt_moderation(question, username) -> int:
+    """
+    Complete GPT driven moderation. Checks for unsafe content and ensures we're only talking
+    about parking information or universities.
+    :param question:
+    :param username:
+    :return:
+    """
+    question = await get_prompt(question, 'ok')
+    chat.model_name = 'gpt-3.5-turbo'
+    old_temp = chat.temperature
+    chat.temperature = 0.2
+    response = chat(question.to_messages()).content
+    logger.debug(f'Got moderation response: {response}')
+    chat.temperature = old_temp
+    await archive_completion(question.to_messages(), response)
+    logger.info(f'Got response: {response}')
+
+    # Safe
+    if '!!!!!!!!' in response:
+        logger.debug(f'Found a safe question from {username}')
+        return 1
+
+    # Not sure
+    if '########' in response:
+        logger.warning(f'Found an unsure question from {username}')
+        return 2
+
+    # Unsafe
+    if '@@@@@@@@' in response:
+        logger.critical(f"UNSAFE QUESTION DETECTED FROM {username}:\n {question}")
+    # Unable to parse
+    else:
+        logger.error(f'Unable to determine safety of query: {question}')
+    return 0
 
 @newrelic.agent.background_task()
 async def map_chain(question, schedule, gpt4=False):
@@ -66,7 +111,7 @@ async def map_chain(question, schedule, gpt4=False):
     :param gpt4:
     :return:
     """
-    logger.info(f'Starting map chain for: {question}')
+    logger.debug(f'Starting map chain for: {question}')
 
     # Get the question to feed to the model
     question = await get_prompt(question, 'map')
@@ -76,17 +121,17 @@ async def map_chain(question, schedule, gpt4=False):
     chat.model_name = "gpt-3.5-turbo"# if not gpt4 else "gpt-4"
     chat.temperature = 0.2
     map_response = chat(question.to_messages())
-    logger.info(f'Got map response: {map_response}')
+    logger.debug(f'Got map response: {map_response}')
     # Cleanup
     chat.temperature = old_model_temp
 
     # This is likely for 'how's parking right now' or 'where can disabled people park'
     if '@@@@@@@@' in map_response.content:
-        logger.info(f'No map response needed for: {question}')
+        logger.debug(f'No map response needed for: {question}')
         return '%%%%%%%%'
     # Extract just the text after "!!!!!!!!"
     map_response = map_response.content.split('!!!!!!!!')[-1]
-    logger.info(f'Got map response: {map_response}')
+    logger.debug(f'Got map response: {map_response}')
     # Check if there is a comma in the string (multiple locations)
     if "," in map_response:
         # Split the string using the comma and strip any extra whitespace
@@ -98,8 +143,9 @@ async def map_chain(question, schedule, gpt4=False):
     tables = ''
     for loc in map_response_list:
         tables += await find_nearest_parking(loc) + '\n'
-
+    logger.debug(f'Completed map chain for: {question}')
     return tables
+
 @newrelic.agent.background_task()
 async def passed_moderation(query: str) -> bool:
     """
@@ -110,7 +156,7 @@ async def passed_moderation(query: str) -> bool:
     try:
         moderation_chain = OpenAIModerationChain(error=True)
         moderation_chain.run(query)
-        logger.info('Moderation chain passed')
+        logger.info('OpenAI Moderation chain passed')
         return True
     except ValueError as e:
         logger.error(f"Flagged content detected: {e}")
@@ -120,7 +166,7 @@ async def passed_moderation(query: str) -> bool:
 async def process_is_ok(is_ok, username, question, memory):
     # Not allowed
     if is_ok == 0 or not await passed_moderation(question):
-        logger.info(f'Message not allowed: {question} (username: {username})')
+        logger.critical(f'Message not allowed: {question} (username: {username})')
         current_sched = memory.get_schedule(username)
         # Log bad actor
         if 'Bad Actor Count: ' not in current_sched:
@@ -133,51 +179,15 @@ async def process_is_ok(is_ok, username, question, memory):
             current_sched = current_sched.split('Bad Actor Count: ')[0]
             new_sched = f'{current_sched}\nBad Actor Count: {count}'
         memory.write_schedule(username, new_sched)
+        logger.debug(f'Wrote new schedule for {username}: {new_sched}')
+
         # determine first/second/third/found string based on count
         return False, 'You\'re not allowed to ask that.' if count == 1 else f"You're not allowed to ask that. I've had to tell you {count} times."
 
     # Couldn't determine if we can handle this, let's try anyway.
     if is_ok == 2:
-        logger.info(f'Trying a command, we shall see. Question: {question}')
+        logger.warning(f'Trying a command, we shall see. Question: {question}')
     return True, ""
-
-@newrelic.agent.background_task()
-async def complete_gpt_moderation(query, username) -> int:
-    """
-    Complete GPT driven moderation. Checks for unsafe content and ensures we're only talking
-    about parking information or universities.
-    :param query:
-    :param username:
-    :return:
-    """
-    response = chat(query.to_messages()).content
-    await archive_completion(query.to_messages(), response)
-    logger.info(f'Got response: {response}')
-
-    # Safe
-    if '!!!!!!!!' in response:
-        logger.info(f'Found a safe qestion from {username}')
-        return 1
-
-    # Not sure
-    if '########' in response:
-        logger.info(f'Found an unsure qestion from {username}')
-        return 2
-
-    # Unsafe
-    if '@@@@@@@@' in response:
-        logger.critical(f"UNSAFE QUESTION DETECTED FROM {username}:\n {query}")
-        return 0
-
-    # Unable to parse
-    else:
-        logger.error(f'Unable to determine safety of query: {query}')
-    return 0
-
-
-@newrelic.agent.background_task()
-async def schedule_summarizer(schedule) -> str:
-    pass
 
 
 # Prompt 1:

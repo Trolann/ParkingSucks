@@ -22,11 +22,10 @@ async def get_final_answer(question, schedule, closest_garages, gpt4=False) -> s
     :param gpt4:
     :return:
     """
-
     with newrelic.agent.BackgroundTask(application=application, name='get_final_answer'):
         logger.info(f'Getting final answer for question: {question}')
         question = await get_prompt(question, 'final', schedule=schedule, closest_garages=closest_garages)
-        logger.info(f'Prompt for final answer: {question}')
+        logger.debug(f'Prompt for final answer: {question}')
         chat.model_name = "gpt-3.5-turbo" if not gpt4 else "gpt-4"
         response = chat(question.to_messages())
         response = response.content

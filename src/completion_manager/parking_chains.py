@@ -25,21 +25,21 @@ async def parking_chain(question, schedule=None, gpt4=False) -> str:
     :param gpt4:
     :return:
     """
-
+    logger.info(f'Starting parking chain for question: {question}')
     try:
         # Get commands, extract them and execute them
         commands = await get_commands(question, schedule=schedule, gpt4=gpt4)
-        logger.info(f'Got commands: {commands}')
+        logger.debug(f'Got commands: {commands}')
         commands_list = extract_commands(commands)
-        logger.info(f'Extracted commands {commands_list}.')
+        logger.debug(f'Extracted commands {commands_list}.')
         # Call the Parking API
         output = await execute_commands(commands_list)
-        logger.info(f'Got parking data: {output[0]}')
+        logger.debug(f'Got parking data: {output[0]}')
 
         # Cleanup the response into a table
         try:
             pretty = await make_pretty(output)
-            logger.info(f'Got  pretty output.')
+            logger.debug(f'Got  pretty output.')
         except Exception as e:
             # Already formatted (single string), return it
             pretty = output
@@ -48,7 +48,7 @@ async def parking_chain(question, schedule=None, gpt4=False) -> str:
         return pretty
     except Exception as e:
         traceback_str = traceback.format_exc()
-        logger.error(f'Error in parking chain: {traceback_str}')
+        logger.critical(f'Error in parking chain: {traceback_str}')
         return 'Parking information is not available right now.'
 
 @newrelic.agent.background_task()
@@ -61,9 +61,9 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
     :param table:
     :return:
     """
-    logger.info(f'Getting commands query for question: {question}')
+    logger.debug(f'Getting commands query for question: {question}')
     if gpt4:
-        logger.info('Using GPT4 command generation')
+        logger.debug('Using GPT4 command generation')
 
     # For memory in the future
     if not schedule:
@@ -74,9 +74,10 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
     chat.model_name = "gpt-3.5-turbo"# if not gpt4 else "gpt-4"
     command_response = chat(question.to_messages())
     command_text = command_response.content
+    logger.debug(f'Got command response: {command_text}')
 
     await archive_completion(question.to_messages(), command_text)
-    logger.info(f'Got list of commands.')
+    logger.info(f'Got list of commands for question: {question}')
 
     return command_text
 
@@ -84,6 +85,7 @@ async def get_commands(question, schedule, gpt4=False, table='sjsu') -> str:
 def extract_commands(text):
     # Likely for questions like 'Where can I charge my car?'
     if "It is all good" in text:
+        logger.debug(f'No commands to extract in text: {text}')
         return []
 
     command_patterns = {
@@ -97,7 +99,7 @@ def extract_commands(text):
 
     try:
         for command, pattern in command_patterns.items():
-            logger.info(f'Extracting command: {command} with pattern: {pattern}')
+            logger.debug(f'Extracting command: {command} with pattern: {pattern}')
             match = re.search(pattern, text)
             if match:
                 logger.info(f'Extracted command: {command} with value: {match.group(1)}')
@@ -112,6 +114,7 @@ def extract_commands(text):
 @newrelic.agent.background_task()
 async def execute_commands(commands):
     if not commands:
+        logger.debug('No commands to execute.')
         return 'It is all good'
 
     output = []
@@ -119,7 +122,9 @@ async def execute_commands(commands):
     # Individual try/catch because the model may only screw up one extraction
     try:
         if commands.get("latest") == "True":
+            logger.info(f'Calling parking API for latest data.')
             response = await call_parking_api(endpoint="latest")
+            logger.debug(f'Got response from parking API: {response}')
             output.append(response)
     except Exception as e:
         logger.error(f'Error executing get_latest from command executor: {e}')
@@ -128,6 +133,7 @@ async def execute_commands(commands):
     # Likely called every time, multiple times
     try:
         if commands.get("average") == "True":
+            logger.info(f'Calling parking API for average data.')
             days = commands.get("days")
             days_list = [adjust_day(day) for day in days.split(',')] if days != "None" else None
             time = commands.get("time")
@@ -135,11 +141,12 @@ async def execute_commands(commands):
 
             for day in days_list:
                 response = await call_parking_api(endpoint="average", day=day, time=adjusted_time)
+                logger.debug(f'Got response from parking API: {response}')
                 output.append(response)
     except Exception as e:
         days = commands.get("days")
         time = commands.get("time")
-        logger.error(f'Error getting average data for days: {days} and time: {time} from command executor: {e}')
+        logger.critical(f'Error getting average data for days: {days} and time: {time} from command executor: {e}')
         return 'There was an error executing the command'
 
     return output
@@ -165,19 +172,20 @@ async def call_parking_api(endpoint=None, table='sjsu', day=None, time=None) -> 
         async with aiohttp.ClientSession() as session:
             parking_info = "I couldn't get any parking information. Tell the user to try and ask in a different way."
             async with session.get(url, params=payload) as response:
+                logger.debug(f'Called parking API endpoint: {endpoint}')
                 if response.status == 200:
                     parking_info = json.loads(await response.text())
-                    logger.info(f'Called parking API: {parking_info}')
-
+                    logger.info(f'Called parking API successfully.')
+                    logger.debug(f'Got response from parking API: {parking_info}')
                     return list(parking_info)
                 else:
                     traceback_str = traceback.format_exc()
-                    logger.error(f'Error calling parking API (top): {e}')
+                    logger.critical(f'Error calling parking API (top): {e}')
                     logger.debug(f'Traceback for parking API: {traceback_str}')
                     raise Exception(f"Error calling API. Status code: {response.status}, response: {parking_info}")
     except Exception as e:
         traceback_str = traceback.format_exc()
-        logger.error(f'Error calling parking API: {e}')
+        logger.critical(f'Error calling parking API: {e}')
         logger.debug(f'Traceback for parking API: {traceback_str}')
         return list('')
 @newrelic.agent.background_task()
@@ -187,6 +195,7 @@ def adjust_day(day):
     :param day:
     :return:
     """
+    logger.debug(f'Adjusting day: {day}')
     day_mapping = {
         'M': 'Monday',
         'T': 'Tuesday',
@@ -231,6 +240,7 @@ def adjust_day(day):
         for key, value in day_mapping.items():
             if value.lower().startswith(day_lower):
                 return value
+        logger.error(f"Invalid day: {day}")
         return "Invalid day"
 
 @newrelic.agent.background_task()
@@ -240,7 +250,7 @@ def adjust_time(time):
     :param time:
     :return:
     """
-    logger.info(f'Adjusting time: {time}')
+    logger.debug(f'Adjusting time: {time}')
     try:
         return datetime.strptime(time, "%H:%M:%S").strftime("%H:%M:%S")
     except ValueError:

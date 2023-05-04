@@ -41,6 +41,7 @@ def get_latest():
     shuttle = request.args.get('shuttle')
     try:
         result = db.get_latest(table, shuttle=True if shuttle else False)
+        logger.info(f'Got latest data from {request.remote_addr}\n{result}')
     except Exception as e:
         logger.error(f'Error getting latest data: {e}')
         return jsonify({"error": f"Error getting latest data"}), 500

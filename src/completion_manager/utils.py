@@ -91,8 +91,8 @@ async def determine_column_widths(query_results):
                 column_widths[key] = max(column_widths[key], len(str(value)))
         except Exception as e:
             traceback_str = traceback.format_exc()
-            logger.info(f'Traceback: {traceback_str}')
-            logger.info(f'Error: {e}')
+            logger.debug(f'Traceback: {traceback_str}')
+            logger.error(f'Error making pretty (column widths): {e}')
             continue
     return column_widths, data_line
 
@@ -114,6 +114,7 @@ async def create_table(query_results):
 
 @newrelic.agent.background_task()
 async def make_pretty(query_results_list):
+    logger.debug(f'Making pretty for query results: {query_results_list}')
     tables = []
     for query_results in query_results_list:
         logger.info(f'Query results: {query_results}')
@@ -227,12 +228,12 @@ async def find_nearest_parking(location_name, locations=LOCATIONS):
         "South Parking Facility": ("D2", "Q1"),
         "West Parking Facility": ("D1", "Q1"),
     }
-
+    logger.info(f'Finding nearest parking for {location_name}')
     def closest_key_match(parking_dict, search_string):
         search_words = search_string.split()
         min_distance = float('inf')
         closest_key = None
-        logger.info(f'Finding closest key for {search_string}')
+        logger.debug(f'Finding closest key for {search_string}')
         for key in parking_dict.keys():
             key_words = key.split()
             for search_word, key_word in zip(search_words, key_words):
@@ -241,7 +242,7 @@ async def find_nearest_parking(location_name, locations=LOCATIONS):
                 if dist < min_distance:
                     min_distance = dist
                     closest_key = key
-
+        logger.debug(f'Found {closest_key} for {search_string}')
         return closest_key
 
     def parse_location(loc_string, quadrant_string):
@@ -254,8 +255,11 @@ async def find_nearest_parking(location_name, locations=LOCATIONS):
     def distance(location1, location2, exact_match=False):
         location1 = closest_key_match(locations, location1)
         location2 = closest_key_match(parking_facilities, location2)
+
         if not location1 or not location2:
+            logger.error(f'Could not find distance between {location1} and {location2}')
             return float('inf')
+        logger.info(f'Finding distance between {location1} and {location2}')
 
         x1 = x2 = y1 = y2 = float(0)
         try:
@@ -271,7 +275,9 @@ async def find_nearest_parking(location_name, locations=LOCATIONS):
                 return float('inf')
 
         dist = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
-        return round(dist, 3) if dist > 0 else float(5000)
+        dist = round(dist, 3) if dist > 0 else float(5000)
+        logger.info(f'Distance between {location1} and {location2} is {dist}')
+        return dist
 
     distances = [{"name": facility, "distance": distance(location_name, facility)} for facility in parking_facilities]
     distances.sort(key=lambda x: x["distance"])
@@ -280,6 +286,8 @@ async def find_nearest_parking(location_name, locations=LOCATIONS):
     distances.append({"name": data_line, "distance": 0.0})
 
     pretty_table = await make_pretty([distances])
+    logger.debug(f'Got pretty distance table: {pretty_table}')
+    logger.info(f'Finished finding nearest parking for {location_name}')
     return pretty_table
 
 
