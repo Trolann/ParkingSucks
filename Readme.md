@@ -18,7 +18,7 @@ Assume all code generated fully, mostly or in part by GPT3.5 or GPT4. Exact prom
        | | New Relic: | |                   |    |              |      End Users:      |      | |            |    | +-----------------------------+|                         
        | | Infra      | |     WordPress     |    |              |       Browser        |      | |   OpenAI   |    | +-----------------------------+|                         
        | | PHP        | |     Front-end     <------------------->       Mobile         |      | |            |    --|   sjsu.doublemap.com/map    ||                         
-       | | Apache     | |                   |    |              |       Di cord        |      | |            |    | +-----------------------------+|                         
+       | | Apache     | |                   |    |              |       Discord        |      | |            |    | +-----------------------------+|                         
        | |            | |                   <-------------      +----------------^-----+      | +--^---------+    |                                |                         
        | +------------+ +-------------------+    |       |                       |            |    |              |                                |                         
        |                                         |       |                       -------      |    |              |                                |                         
