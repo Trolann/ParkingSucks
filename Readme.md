@@ -60,9 +60,9 @@ Assume all code generated fully, mostly or in part by GPT3.5 or GPT4. Exact prom
 |      |------AuthN------>|                 |               |                |                  |                |                |           |     |
 |      |                  |                 |               |                |                  |                |                |           |     |
 |      |                  |<----Content---->|               |                |                  |                |                |           |     |
-|      |                  |<----------------------------------GPT moderation/content/logic check--------------------------------->|           |     |
-|      |                  |<--Determine garage distances--->|<---------------Extract location from natural language-------------->|           |     |
-|      |                  |-------Get parking fullness, shuttle times------->|                  |                |                |           |     |
+|      |      Parallel  { |<----------------------------------GPT moderation/content/logic check--------------------------------->|           |     |
+|      |        GPT   ->{ |<--Determine garage distances--->|<---------------Extract location from natural language-------------->|           |     |
+|      |      Requests  { |<------Get parking fullness, shuttle times------->|                  |                |                |           |     |
 |      |                  |                 |               |                |<-----Extract API calls from natrual language------>|           |     |
 |      |                  |                 |               |                |<------Call------>|<---Read only---|                |           |     |
 |      |                  |<-----------Return table of relevant parking information-------------|                |                |           |     |
