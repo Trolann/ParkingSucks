@@ -5,7 +5,7 @@ Here's the user's schedule. I'm including it in case it helps, but it may not be
 
 Current date: Thursday May 1st, 2023 11:30:24
 Question: How is parking right now?
-Step 1: It is currently Monday at 11:30. The user is asking about the present and needs the latest parking information.
+Step 1: It is currently Monday at 11:30. The user is asking about the present and needs the latest parking information. 
 Step 2: The user is not asking about a future date or time. I do not need to provide day of week or time of day. I must set get_average_parking_info to False.
 Step 3: Getting the latest parking information will help the user find information about parking right now. I must set get_latest_parking_info to True.
 @@@@@@@@
@@ -41,8 +41,8 @@ Step 3: Getting the latest parking information won't help the user find informat
 get_latest_parking_info = False
 get_average_parking_info = True
 if get_average_parking_info:
-    days_of_the_week = ["Tuesday", "Thursday"]
-    time_of_the_day = '11:30:00'
+    days_of_the_week = ["Friday"]
+    time_of_the_day = '13:30:00'
 ```
 
 Current date: {datetime}
