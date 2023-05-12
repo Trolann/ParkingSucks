@@ -292,4 +292,49 @@ async def find_nearest_parking(location_name, locations=LOCATIONS):
     logger.info(f'Finished finding nearest parking for {location_name}')
     return pretty_table
 
+# Prompts
+
+# Update this to take in a list of results and make them each pretty like this, then return them as a single string of tables separated by a newline
+
+# This is a list of Grid (A1, A2, etc) and quadrant with the quadrant of the grid (top left is 1, bottom left is 3, etc) and the name.
+#
+# Write a python function which takes in a location name string and calculates the distance using the pythagorean theorem to each of these garages
+# A4 Q4 North Parking Facility
+# D2 Q1 South Parking Facility
+# D1 Q1 West Parking Facility
+#
+# and returns a list of the garage names in order by distance. The list should just be a list of strings.
+#
+# Distance should be counted as units where each unit is a quadrant. It should calculate the a and b of the theorem to determine c.
+
+# =CONCAT("\"", C2, '" (""', A2, ',\"', B2, '\")')
+#
+# Update this excel formula to take in this table:
+# Grid	Quadrant	Location Name
+# A4	Q4	North Parking Facility
+#
+# and output the format needed for the dictionary
+
+
+# async def get_prompt(question, prompt_type, **kwargs):
+# ....
+# Update this message to convert the datetime to PT.
+
+# Write a python script with functions send_reply and send_message that hit these endpoints with given parameters
+
+# These three are having issues. They should take in this type of list:
+# [{"fullness":"36%","name":"North Garage "},{"fullness":"5%","name":"South Campus Garage "},{"fullness":"68%","name":"South Garage "},{"fullness":"40%","name":"West Garage "},{"fullness":"37%","name":null},{"fullness":"37%","name":"Data above is average fullness for Monday at 09:00:00"}]
+#
+# and return a formatted table. Right now, we're getting this error for entry.items():
+# [completion-manager]: Error: 'str' object has no attribute 'items')
+#
+# modify as needed for the make_pretty function to work and return the formatted table as expected
+
+# formatted_datetime = now.strftime("%H:%M %a, %b %-d %Y")
+#
+# Change this to:
+# Saturday, April 22nd 2023 with the current time
+
+
+
 

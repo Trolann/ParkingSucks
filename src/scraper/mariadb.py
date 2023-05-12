@@ -170,3 +170,14 @@ shuttles_db = Shuttles('sjsu-shuttles')
 if __name__ == '__main__':
     config = Parking('test')
 
+# Prompts
+
+# I have this data I'm gathering about shuttle times at my university. Every time a new shuttle time is given (a shuttle departs or gets delayed) I scrape it. I want to be able to quickly determine the average time between shuttle departures for a given 30 minute period between 7am and 6pm monday thru friday. What is a good way to optimize or prepare this data and accomplish this goal?
+# can there be a sql query waiting for new inserts into the table to insert the values for the columns you've suggested?
+
+# On each stop webpage there are 2 departure times: 1 for the next shuttle and 1 for the following shuttle. Update this script to only consider the the first time listed.
+
+#
+
+
+

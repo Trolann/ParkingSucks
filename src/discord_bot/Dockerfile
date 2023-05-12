@@ -19,3 +19,6 @@ COPY . .
 
 # Run the bot
 CMD ["python", "api.py"]
+
+#prompt to make:
+# Make a dockerfile for this script:

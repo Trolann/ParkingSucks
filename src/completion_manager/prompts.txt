@@ -1,0 +1,38 @@
+For mariadb:
+USER_DB_USER=completions
+USER_DB_PASS=1234
+USER_DB_NAME=psskeds
+
+Give me the command to create this user and db. The user should be able to insert and update. If it's possible to limit how a user could use the delete command, also give me a way where they could only delete with this query:
+            DELETE FROM {self.table}
+            WHERE dateadded < %s
+
+this user should be able to select anything on the table
+
+In python how can I easily salt and hash or encrypt and decrypt values I’m storing in a database? Assume I’m using MySQL.connector with a MariaDB (10.10)
+
+Trevor Mathisen
+I want to store a users class schedule in an encrypted way but be able to retrieve it in plain text
+
+What kind of encryption algorithm does fernet use? Is it salted?
+
+Fernet also includes a 128-bit timestamp in the encrypted message to ensure that the ciphertext cannot be decrypted if it is too old (by default, the timestamp limit is set to 60 seconds).
+
+Explain this more.
+
+
+
+Update this class to:
+1) Have the following schema instead: id (primary key auto inc), username (unique), schedule, and dateadded
+2) insert/update methods
+3) A utility method which deletes all records with dateadded > 125 days old. This method should be called once a day, but can be run more often. Use threads or some other library if needed.
+
+
+Update this to:
+no longer worry about creating the table, remove it all, the table exist.
+
+A method to return a schedule given a username.
+
+The tablename is getenv("USER_DB_TABLE")
+
+Add some into and error logging

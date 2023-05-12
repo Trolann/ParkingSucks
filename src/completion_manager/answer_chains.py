@@ -217,3 +217,14 @@ async def process_is_ok(is_ok, username, question, memory):
 # Prompt 5:
 # Take this query and use the CONCAT or similar function to add a single row to the top that says:
 # Data generated for Tuesday and Thursday's from 12:30pm until 1:30pm.
+
+# Prompt 6:
+# How can I assign parking_info and map_info with simultaneous calls/threads? I'd like them to kick off at the same time but then wait for the values to be returned
+
+# Prompt 6:
+# Update this script to:
+# Kick-off the assignment of is_ok, parking_info and map_info at the same time.
+# Assign a callback to process is_ok and if it passes (returns non-0) does the send_reply and allows the final_answer call to kickoff when parking_info and map_info are done, and if it doesn't pass it blocks final_answer from being called and processes the bad actor.
+#
+# Give me the whole script in a codeblock. Explain what you did after the codeblock
+

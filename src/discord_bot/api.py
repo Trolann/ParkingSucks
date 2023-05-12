@@ -83,3 +83,8 @@ if __name__ == '__main__':
         loop.run_until_complete(bot.close())
         loop.run_until_complete(app.shutdown())
         loop.close()
+
+# Setup a new script as part of this bot called api.py which takes in a message string and a username or message id and sends the message to the given user or replies to the given message
+
+# write an api.py file that sets up a quart api to receive the message_str and identifier and call the send_message_or_reply function from api.py
+

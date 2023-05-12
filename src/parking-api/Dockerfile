@@ -12,3 +12,7 @@ COPY . /app
 
 
 CMD ["python", "api.py"]
+
+
+#prompt to make:
+# Make a dockerfile for this script:

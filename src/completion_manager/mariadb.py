@@ -127,3 +127,28 @@ class Memory:
 
     def __del__(self):
         self.conn.close()
+# I need the SQL command to update the user 'completions' and allow it to have connections from the 172.18.x.x subnet
+
+# write a SQL query to select for each unique 'name' in a table the row with the most recent 'time'
+
+# Change this query:
+# SELECT t1.* FROM {table} t1 INNER JOIN (SELECT name, MAX(time) AS max_time FROM {table} GROUP BY name) t2 ON t1.name = t2.name AND t1.time = t2.max_time;
+#
+# To select the average of this time last week -30 minutes. So if now is noon on Monday April 17, this would select the average time for each unique name between 1130am and 12pm on April 10th.
+
+# I want to add a '%' after each integer in the 'fullness' column
+
+# At the end of this query I want to concat a row which reads:
+# Average information for day around time
+
+# I want a MariaDB SQL query which will return the name and fullness of each unique name based on this criteria:
+# - Given a day (Monday/Tuesday/Wednesday) and a time (HH:MM:SS) search through all 'time' values for the given day between (time - 60 minutes) and time
+# - For each unique name, average the values
+# - Return 2 columns: name and fullness
+# - Return 1 unique row per unique name in the table
+# - Append to the end of the results a row which reads:
+# Average fullness for day at time
+
+
+
+

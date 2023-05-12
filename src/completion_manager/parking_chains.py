@@ -273,3 +273,75 @@ def adjust_time(time):
         return datetime.strptime(time, "%H:%M:%S").strftime("%H:%M:%S")
     except ValueError:
         return "Invalid time"
+
+
+# Prompts:
+
+# Write an execute_commands function which takes the output list from this function and using a switch case or if statements to call_parking_api with the given parameters like:
+# def call_parking_api(endpoint, day=None, time=None, sql_query=None):
+#
+# Each item in the commands_list should be run once and only once. Each call_parking_api response should be ran through the make_pretty(response) function and then appended to the returned string.
+
+
+# Write a function extract_commands(text) which takes in a string of text which includes:
+# get_latest_parking_info = False
+# get_average_parking_info = True
+# if get_average_parking_info:
+#     days_of_the_week = ["Tuesday", "Thursday"]
+#     time_of_the_day = '11:30:00'
+#
+# and extracts the values into a dictionary with the values 'latest', 'average', 'days', 'time' and returns it. Do not use regex if you can avoid it. Use simple string manipulation and splits and joins to find this part of text and extract it.
+#
+# Values can be True/False and the list of days_of_the_week could be empty or have 1-7 days of the week. Time is always a single string.
+
+# Update this method to take in the list of days from the above dictionary instead of a string of days
+
+# This method works great when days_of_the_week is just 1 item, but more than 1 item causes it to be ommitted:
+# found match <re.Match object; span=(483, 514), match='get_latest_parking_info = False'>
+# found match <re.Match object; span=(515, 546), match='get_average_parking_info = True'>
+# found match <re.Match object; span=(626, 654), match="time_of_the_day = '01:00:00'">
+# {'latest': 'False', 'average': 'True', 'time': '01:00:00'}
+#
+#
+# ** Process exited - Return Code: 0 **
+# Press Enter to exit terminal
+#
+# Please correct it
+
+# This isn't working. You're complicating a ham sandwich.
+#
+# We know the line is going to start with whitespace and days_of_the_week and we know the values after the equal sign will be a comma separated list because of the cleaned_text. Just use split and join or something simple to parse this line instead of fucking with the most complex regex I've seen in a while.
+
+
+# write a python function that takes in a list formatted like "North Parking Facility": ("A4", "Q4"), and a string and finds the closest key match to the string.
+
+# this is wrong. The string would instead be "North" and you'd return "North Parking Facility"
+
+# This method is causing some recursion depth issues. I want to have the closest_key_match called on a key error and then have the key replaced if found or if not found, gracefully go to the next or return, logging the whole way.
+
+
+# Getting this error:
+# KeyError: None
+#
+# The relevant value in LOCATIONS should be     "Engineering": ("B3", "Q1"),
+
+# We need to fix that, yes, but also when Engineering Building 325 is the given string, it should correctly match it to Engineering we're using from Levenshtein import distance already I hope
+
+# Update the find_nearest_parking method to use the make_pretty method to return a pretty table string where the table has headers of name and distance and each row is the facility name followed by its distance. The last row should be a data line that starts with "Data above is distances from {location name}"
+
+#My ide is giving me an error for this line:
+#Expected type 'dict[str, str | float | Any]' (matched generic type '_T'), got 'dict[str, str]' instead
+
+# Update call_parking_api and execute_commands as needed to:
+# Correctly pass the right information from execute_commands to call_parking_api
+# call the parking api endpoint once per command
+# return from execute_commands a list of outputs (casted to strings) from call_parking_api
+
+# Update this function to take in a string and find all the lines that start with one of these strings, then returns each line as a list of dictionary items, where the 'command' key is one of the strings below as it appears, 'endpoint' is given below for one of the strings, and each other key is on the same line in key=value pairs, separated by a comma. There could be any number of key:value pairs.
+#
+# The output should be a list of dictionaries, each with keys 'command', 'endpoint', and key:value pairs ran through the 'call_parking_api' method.
+
+
+
+
+

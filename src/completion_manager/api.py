@@ -52,3 +52,10 @@ async def completion():
 if __name__ == '__main__':
     memory = Memory()
     app.run(host='0.0.0.0', port=8080, debug=True)
+
+# Convert this to async.
+# BotLog is a synchronous logger and should be called synchronously.
+# get_prompt, make_pretty and archive_completion have been converted to async and their calls need to be updated with await.
+#
+# Your reply should have a codeblock.
+

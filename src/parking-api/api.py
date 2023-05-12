@@ -182,3 +182,9 @@ if __name__ == '__main__':
 # Prompt 3:
 # this is close, but in this config all of them will use the same table (parking) and
 # not the given argument table. Correct it.
+
+# Convert this to async. Assume BotLog is synchronous and all methods from utils.py have been converted to async and need to be updated. Your reply should have a codeblock.
+
+# User
+# if my completion api endpoint is async what's the potential issue with it calling sync code?
+

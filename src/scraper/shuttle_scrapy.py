@@ -162,3 +162,73 @@ if __name__ == "__main__":
     stop1 = ShuttleStatus("http://sjsu.doublemap.com/map/text?stop=1")
     stop5 = ShuttleStatus("http://sjsu.doublemap.com/map/text?stop=5")
     monitor_shuttle_statuses()
+
+
+# Prompts
+
+# Write a python script with a main dunder method to go to http://sjsu.doublemap.com/map/text?stop=5 and http://sjsu.doublemap.com/map/text?stop=1 and has functions to:
+# 1) Find the current timestamp written on the page (rendered javascript) as Last updated Tue Apr 25 2023 13:50:26 GMT-0700 (Pacific Daylight Time). Store as a datetime object for use soon
+# 2) Scrape the stop name and time until next departure from the stop written on the page (rendered javascript):
+# Next departures for ALMA STOP
+#
+#     Spring 2023: 19 minutes
+#     Spring 2023: 27 minutes
+# 3) Computes a list of times for 'next shuttle times' as datetime objects and the next time a shuttle will come
+# 4) Determine the min, max, mean time a shuttle will depart based on new information.
+# 5) Keeps as little information as possible
+# 6) Stores all of this in some kind of ShuttleStatus class which we can use to get information on stops and shuttles
+
+# Traceback (most recent call last):
+#   File "main.py", line 46, in <module>
+#     stop1 = ShuttleStatus("http://sjsu.doublemap.com/map/text?stop=1")
+#   File "main.py", line 14, in __init__
+#     self.scrape_data()
+#   File "main.py", line 21, in scrape_data
+#     timestamp_text = soup.find("span", {"id": "lastUpdated"}).text
+# AttributeError: 'NoneType' object has no attribute 'text'
+
+# Looking into my monitoring I'm seeing dozens of open ports on localhost, which appear to be associated with urrlib2. Sometimes it seems these ports are being exhausted and throwing errors.
+#
+# How can I modify my code to better manage the ports being used and prevent resource exhaustion?
+
+# Are there going to be any issues with ThreadPool by using a single driver? Why doesn't the driver.quit() in the ShuttleStatus class currently cleanup the ports?
+
+#        try:
+#             driver.get(self.stop_url)
+#             WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, "//ul[@id='stop-departures-list']/li")))
+#             soup = BeautifulSoup(driver.page_source, "html.parser")
+#         except Exception as e:
+#             logger.error(f'Error scraping {self.stop_url}: {e}')
+#             return
+#         finally:
+#             driver.quit()
+#
+# Will this properly hit .quit() or will the return in the exeption block prevent it?
+
+#This script is incorrectly displaying the time to departure. From the website (stop1):
+#  DoubleMap
+# Next departures for Duncan Hall
+#
+#     Spring 2023: 23 minutes
+#     Spring 2023: 39 minutes
+#
+# Last updated Tue Apr 25 2023 15:46:19 GMT-0700 (Pacific Daylight Time)
+#
+# (stop5)
+#
+# DoubleMap
+# Next departures for ALMA STOP
+#
+#     Spring 2023: 27 minutes
+#     Spring 2023: 37 minutes
+#
+# Last updated Tue Apr 25 2023 15:46:27 GMT-0700 (Pacific Daylight Time)
+#
+# As
+# Updated time_to_departure for stop 1: 2023 minutes
+# Updated time_to_departure for stop 5: 2023 minutes
+
+# Move the while loop to a function. Also add to the function logic to sleep for the minimum given time minus 2 minutes and then if the min sleep time is less than 2 minutes to sleep for 10 seconds.
+#
+# The function should take in a list of ShuttleStatus objects
+

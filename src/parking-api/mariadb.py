@@ -295,3 +295,23 @@ class Config:
 # [ERROR][api]: Error getting latest data: MySQL Connection not available.
 #
 # Update the class to try and get a new connection before throwing the exception. Ensure to log an error if needed.
+
+# Prompt 2:
+#
+# Why is the API returning stale results? How can I get it to retrieve the most recent results every time? Is something not being closed correctly during a call and causing and issue for later calls? I suspect this because a restart of the API or waiting hours and hours gets the latest data, then it gets stale.
+
+# MariaDB [scraped_data]> SHOW VARIABLES LIKE 'query_cache_type';
+# +------------------+-------+
+# | Variable_name    | Value |
+# +------------------+-------+
+# | query_cache_type | OFF   |
+# +------------------+-------+
+# 1 row in set (0.001 sec)
+#
+# I also added SQL_NO_CACHE
+#
+# Same results
+
+# I don't like this soultion. There's already a retry_connection method can we use that? Can we do better to close the connection in get_latest and then retry_connection?\
+
+#
